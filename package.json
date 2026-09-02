@@ -1,0 +1,18 @@
+{
+  "name": "redisgen",
+  "version": "1.0.0",
+  "description": "A Redis-compatible in-memory data store built from scratch",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test tests/protocol.test.js tests/commands.test.js tests/expiry.test.js tests/persistence.test.js tests/integration.test.js"
+  },
+  "keywords": [
+    "redis",
+    "database",
+    "key-value",
+    "in-memory",
+    "cache"
+  ],
+  "license": "MIT"
+}
