@@ -145,7 +145,8 @@ function dispatch(cmdParts, ctx) {
         ctx.connection.txQueue.push({
             handler: entry.handler,
             cmdArgs: cmdArgs,
-            cmdCtx: Object.assign({}, ctx, { db: ctx.connection.db || 0 })
+            cmdCtx: Object.assign({}, ctx, { db: ctx.connection.db || 0 }),
+            rawParts: cmdParts
         });
         return encoder.queued();
     }

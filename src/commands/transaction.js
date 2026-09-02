@@ -1,6 +1,6 @@
 'use strict';
 
-const encoder = require('../protocol/encoder');
+var encoder = require('../protocol/encoder');
 
 function cmdMulti(args, ctx) {
     if (ctx.connection.txQueue) {
@@ -21,7 +21,7 @@ function cmdExec(args, ctx) {
         return encoder.nullArray();
     }
 
-    const queue = ctx.connection.txQueue;
+    var queue = ctx.connection.txQueue;
     ctx.connection.txQueue = null;
     ctx.store.unwatchAll(ctx.connection.id);
 
@@ -29,11 +29,18 @@ function cmdExec(args, ctx) {
         return encoder.emptyArray();
     }
 
-    const results = [];
-    for (let i = 0; i < queue.length; i++) {
-        const { handler, cmdArgs, cmdCtx } = queue[i];
-        const response = handler(cmdArgs, cmdCtx);
+    var results = [];
+    var committedCmds = [];
+
+    for (var i = 0; i < queue.length; i++) {
+        var entry = queue[i];
+        var response = entry.handler(entry.cmdArgs, entry.cmdCtx);
         results.push(response);
+        committedCmds.push(entry.rawParts);
+    }
+
+    if (ctx.aofBuffer !== undefined) {
+        ctx.aofBuffer = committedCmds;
     }
 
     return '*' + results.length + '\r\n' + results.join('');
@@ -55,7 +62,7 @@ function cmdWatch(args, ctx) {
         return encoder.encodeError('ERR WATCH inside MULTI is not allowed');
     }
 
-    for (let i = 0; i < args.length; i++) {
+    for (var i = 0; i < args.length; i++) {
         ctx.store.watchKey(ctx.connection.id, ctx.db, args[i]);
     }
 

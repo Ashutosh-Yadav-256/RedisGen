@@ -14,7 +14,8 @@ function makeCtx(store, db) {
         config: new ServerConfig(),
         connection: { db: db || 0, id: 1, name: null, txQueue: null },
         pubsub: new PubSubBroker(),
-        clientCount: 1
+        clientCount: 1,
+        aofBuffer: null
     };
 }
 
@@ -417,5 +418,96 @@ describe('Server Commands', () => {
         exec(store, 'RPUSH mylist a b');
         const r = exec(store, 'INCR mylist');
         assert.ok(r.includes('WRONGTYPE'));
+    });
+});
+
+describe('Audit Fix: Strict Validation', () => {
+    let store;
+
+    beforeEach(() => {
+        store = new DataStore(16);
+    });
+
+    it('INCR rejects trailing garbage in value', () => {
+        exec(store, 'SET foo 10abc');
+        const r = exec(store, 'INCR foo');
+        assert.ok(r.includes('ERR'));
+    });
+
+    it('INCRBY rejects trailing garbage in argument', () => {
+        exec(store, 'SET foo 10');
+        const r = exec(store, 'INCRBY foo 5abc');
+        assert.ok(r.includes('ERR'));
+    });
+
+    it('HINCRBY rejects trailing garbage', () => {
+        exec(store, 'HSET myhash field 10');
+        const r = exec(store, 'HINCRBY myhash field 5abc');
+        assert.ok(r.includes('ERR'));
+    });
+});
+
+describe('Audit Fix: LSET Mutation Tracking', () => {
+    let store;
+
+    beforeEach(() => {
+        store = new DataStore(16);
+    });
+
+    it('LSET bumps WATCH version', () => {
+        exec(store, 'RPUSH mylist a b c');
+        store.watchKey(99, 0, 'mylist');
+        exec(store, 'LSET mylist 1 z');
+        assert.strictEqual(store.isWatchDirty(99), true);
+    });
+
+    it('LSET increments dirty counter', () => {
+        exec(store, 'RPUSH mylist a b c');
+        var before = store.dirty;
+        exec(store, 'LSET mylist 1 z');
+        assert.ok(store.dirty > before);
+    });
+});
+
+describe('Audit Fix: SWAPDB Expiry', () => {
+    let store;
+
+    beforeEach(() => {
+        store = new DataStore(16);
+    });
+
+    it('SWAPDB preserves key expiry across databases', () => {
+        exec(store, 'SET foo bar');
+        store.expiry.setExpiry(0, 'foo', 60000);
+        exec(store, 'SWAPDB 0 1');
+        var ttl = store.expiry.ttlMs(1, 'foo');
+        assert.ok(ttl > 0);
+        var oldTtl = store.expiry.ttlMs(0, 'foo');
+        assert.strictEqual(oldTtl, -1);
+    });
+});
+
+describe('Audit Fix: EXAT Past Deadline', () => {
+    let store;
+
+    beforeEach(() => {
+        store = new DataStore(16);
+    });
+
+    it('SET EXAT with past timestamp expires key immediately', () => {
+        var pastTs = Math.floor(Date.now() / 1000) - 100;
+        var parts = ['SET', 'foo', 'bar', 'EXAT', String(pastTs)];
+        var ctx = makeCtx(store);
+        dispatch(parts, ctx);
+        assert.strictEqual(store.exists(0, 'foo'), false);
+    });
+
+    it('EXPIREAT with past timestamp deletes key', () => {
+        exec(store, 'SET foo bar');
+        var pastTs = Math.floor(Date.now() / 1000) - 100;
+        var parts = ['EXPIREAT', 'foo', String(pastTs)];
+        var ctx = makeCtx(store);
+        dispatch(parts, ctx);
+        assert.strictEqual(store.exists(0, 'foo'), false);
     });
 });

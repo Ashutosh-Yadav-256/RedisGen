@@ -1,44 +1,53 @@
 'use strict';
 
-const encoder = require('../protocol/encoder');
-const { TYPE_STRING } = require('../datastore/store');
+var encoder = require('../protocol/encoder');
+var TYPE_STRING = require('../datastore/store').TYPE_STRING;
+var validate = require('../utils/validate');
 
 function cmdSet(args, ctx) {
     if (args.length < 2) return encoder.wrongArgCount('set');
 
-    const key = args[0];
-    const value = args[1];
+    var key = args[0];
+    var value = args[1];
 
-    let exMs = null;
-    let nx = false;
-    let xx = false;
-    let keepTtl = false;
-    let getOld = false;
+    var exMs = null;
+    var nx = false;
+    var xx = false;
+    var keepTtl = false;
+    var getOld = false;
 
-    let i = 2;
+    var i = 2;
     while (i < args.length) {
-        const flag = args[i].toUpperCase();
+        var flag = args[i].toUpperCase();
         switch (flag) {
-            case 'EX':
+            case 'EX': {
                 if (i + 1 >= args.length) return encoder.syntaxError();
-                exMs = parseInt(args[++i], 10) * 1000;
-                if (isNaN(exMs) || exMs <= 0) return encoder.encodeError('ERR invalid expire time in \'set\' command');
+                var exSec = validate.strictParseInt(args[++i]);
+                if (exSec === null || exSec <= 0) return encoder.encodeError("ERR invalid expire time in 'set' command");
+                exMs = exSec * 1000;
                 break;
-            case 'PX':
+            }
+            case 'PX': {
                 if (i + 1 >= args.length) return encoder.syntaxError();
-                exMs = parseInt(args[++i], 10);
-                if (isNaN(exMs) || exMs <= 0) return encoder.encodeError('ERR invalid expire time in \'set\' command');
+                var pxVal = validate.strictParseInt(args[++i]);
+                if (pxVal === null || pxVal <= 0) return encoder.encodeError("ERR invalid expire time in 'set' command");
+                exMs = pxVal;
                 break;
-            case 'EXAT':
+            }
+            case 'EXAT': {
                 if (i + 1 >= args.length) return encoder.syntaxError();
-                exMs = (parseInt(args[++i], 10) * 1000) - Date.now();
-                if (isNaN(exMs)) return encoder.encodeError('ERR invalid expire time in \'set\' command');
+                var exatVal = validate.strictParseInt(args[++i]);
+                if (exatVal === null) return encoder.encodeError("ERR invalid expire time in 'set' command");
+                exMs = (exatVal * 1000) - Date.now();
                 break;
-            case 'PXAT':
+            }
+            case 'PXAT': {
                 if (i + 1 >= args.length) return encoder.syntaxError();
-                exMs = parseInt(args[++i], 10) - Date.now();
-                if (isNaN(exMs)) return encoder.encodeError('ERR invalid expire time in \'set\' command');
+                var pxatVal = validate.strictParseInt(args[++i]);
+                if (pxatVal === null) return encoder.encodeError("ERR invalid expire time in 'set' command");
+                exMs = pxatVal - Date.now();
                 break;
+            }
             case 'NX': nx = true; break;
             case 'XX': xx = true; break;
             case 'KEEPTTL': keepTtl = true; break;
@@ -51,14 +60,14 @@ function cmdSet(args, ctx) {
 
     if (nx && xx) return encoder.syntaxError();
 
-    const db = ctx.db;
-    const store = ctx.store;
+    var db = ctx.db;
+    var store = ctx.store;
 
     if (!store.checkType(db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    const oldValue = store.get(db, key);
+    var oldValue = store.get(db, key);
 
     if (nx && oldValue !== undefined) {
         return getOld ? encoder.encodeBulkString(oldValue) : encoder.nullBulk();
@@ -68,11 +77,13 @@ function cmdSet(args, ctx) {
         return getOld ? encoder.nullBulk() : encoder.nullBulk();
     }
 
-    const prevExpiry = keepTtl ? store.expiry.getExpiry(db, key) : -1;
+    var prevExpiry = keepTtl ? store.expiry.getExpiry(db, key) : -1;
 
     store.set(db, key, value, TYPE_STRING);
 
-    if (keepTtl && prevExpiry > 0) {
+    if (exMs !== null && exMs <= 0) {
+        store.deleteKey(db, key);
+    } else if (keepTtl && prevExpiry > 0) {
         store.expiry.setExpireAt(db, key, prevExpiry);
     } else if (exMs !== null && exMs > 0) {
         store.expiry.setExpiry(db, key, exMs);
@@ -90,12 +101,12 @@ function cmdSet(args, ctx) {
 function cmdGet(args, ctx) {
     if (args.length !== 1) return encoder.wrongArgCount('get');
 
-    const key = args[0];
+    var key = args[0];
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    const val = ctx.store.get(ctx.db, key);
+    var val = ctx.store.get(ctx.db, key);
     if (val === undefined) return encoder.nullBulk();
     return encoder.encodeBulkString(val);
 }
@@ -103,13 +114,13 @@ function cmdGet(args, ctx) {
 function cmdMget(args, ctx) {
     if (args.length < 1) return encoder.wrongArgCount('mget');
 
-    const results = [];
-    for (let i = 0; i < args.length; i++) {
-        const key = args[i];
+    var results = [];
+    for (var i = 0; i < args.length; i++) {
+        var key = args[i];
         if (ctx.store.typeOf(ctx.db, key) !== TYPE_STRING) {
             results.push(null);
         } else {
-            const val = ctx.store.get(ctx.db, key);
+            var val = ctx.store.get(ctx.db, key);
             results.push(val !== undefined ? val : null);
         }
     }
@@ -120,7 +131,7 @@ function cmdMget(args, ctx) {
 function cmdMset(args, ctx) {
     if (args.length < 2 || args.length % 2 !== 0) return encoder.wrongArgCount('mset');
 
-    for (let i = 0; i < args.length; i += 2) {
+    for (var i = 0; i < args.length; i += 2) {
         ctx.store.set(ctx.db, args[i], args[i + 1], TYPE_STRING);
         ctx.store.expiry.removeExpiry(ctx.db, args[i]);
     }
@@ -131,7 +142,7 @@ function cmdMset(args, ctx) {
 function cmdSetnx(args, ctx) {
     if (args.length !== 2) return encoder.wrongArgCount('setnx');
 
-    const key = args[0];
+    var key = args[0];
 
     if (ctx.store.exists(ctx.db, key)) {
         return encoder.integerReply(0);
@@ -144,12 +155,12 @@ function cmdSetnx(args, ctx) {
 function cmdGetdel(args, ctx) {
     if (args.length !== 1) return encoder.wrongArgCount('getdel');
 
-    const key = args[0];
+    var key = args[0];
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    const val = ctx.store.get(ctx.db, key);
+    var val = ctx.store.get(ctx.db, key);
     if (val === undefined) return encoder.nullBulk();
 
     ctx.store.deleteKey(ctx.db, key);
@@ -166,39 +177,40 @@ function cmdDecr(args, ctx) {
 
 function cmdIncrby(args, ctx) {
     if (args.length !== 2) return encoder.wrongArgCount('incrby');
-    const increment = parseInt(args[1], 10);
-    if (isNaN(increment)) return encoder.encodeError('ERR value is not an integer or out of range');
+    var increment = validate.strictParseInt(args[1]);
+    if (increment === null) return encoder.encodeError('ERR value is not an integer or out of range');
     return incrByGeneric([args[0]], ctx, increment, 'incrby');
 }
 
 function cmdDecrby(args, ctx) {
     if (args.length !== 2) return encoder.wrongArgCount('decrby');
-    const decrement = parseInt(args[1], 10);
-    if (isNaN(decrement)) return encoder.encodeError('ERR value is not an integer or out of range');
+    var decrement = validate.strictParseInt(args[1]);
+    if (decrement === null) return encoder.encodeError('ERR value is not an integer or out of range');
     return incrByGeneric([args[0]], ctx, -decrement, 'decrby');
 }
 
 function cmdIncrbyfloat(args, ctx) {
     if (args.length !== 2) return encoder.wrongArgCount('incrbyfloat');
 
-    const key = args[0];
-    const increment = parseFloat(args[1]);
-    if (isNaN(increment)) return encoder.encodeError('ERR value is not a valid float');
+    var key = args[0];
+    var increment = validate.strictParseFloat(args[1]);
+    if (increment === null || !isFinite(increment)) return encoder.encodeError('ERR value is not a valid float');
 
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    let current = ctx.store.get(ctx.db, key);
+    var current = ctx.store.get(ctx.db, key);
     if (current === undefined) {
         current = 0;
     } else {
-        current = parseFloat(current);
-        if (isNaN(current)) return encoder.encodeError('ERR value is not a valid float');
+        current = validate.strictParseFloat(current);
+        if (current === null || !isFinite(current)) return encoder.encodeError('ERR value is not a valid float');
     }
 
-    const result = current + increment;
-    const strResult = Number.isInteger(result) ? result.toString() : result.toString();
+    var result = current + increment;
+    if (!isFinite(result)) return encoder.encodeError('ERR increment would produce NaN or Infinity');
+    var strResult = String(result);
     ctx.store.set(ctx.db, key, strResult, TYPE_STRING);
 
     return encoder.encodeBulkString(strResult);
@@ -207,22 +219,26 @@ function cmdIncrbyfloat(args, ctx) {
 function incrByGeneric(args, ctx, delta, cmdName) {
     if (args.length !== 1) return encoder.wrongArgCount(cmdName);
 
-    const key = args[0];
+    var key = args[0];
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    let current = ctx.store.get(ctx.db, key);
+    var current = ctx.store.get(ctx.db, key);
     if (current === undefined) {
         current = 0;
     } else {
-        current = parseInt(current, 10);
-        if (isNaN(current)) {
+        current = validate.strictParseInt(current);
+        if (current === null) {
             return encoder.encodeError('ERR value is not an integer or out of range');
         }
     }
 
-    const result = current + delta;
+    var result = current + delta;
+    if (result > validate.INT_MAX || result < validate.INT_MIN) {
+        return encoder.encodeError('ERR increment or decrement would overflow');
+    }
+
     ctx.store.set(ctx.db, key, String(result), TYPE_STRING);
 
     return encoder.integerReply(result);
@@ -231,17 +247,17 @@ function incrByGeneric(args, ctx, delta, cmdName) {
 function cmdAppend(args, ctx) {
     if (args.length !== 2) return encoder.wrongArgCount('append');
 
-    const key = args[0];
+    var key = args[0];
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    let current = ctx.store.get(ctx.db, key);
+    var current = ctx.store.get(ctx.db, key);
     if (current === undefined) {
         current = '';
     }
 
-    const newVal = current + args[1];
+    var newVal = current + args[1];
     ctx.store.set(ctx.db, key, newVal, TYPE_STRING);
 
     return encoder.integerReply(Buffer.byteLength(newVal));
@@ -250,12 +266,12 @@ function cmdAppend(args, ctx) {
 function cmdStrlen(args, ctx) {
     if (args.length !== 1) return encoder.wrongArgCount('strlen');
 
-    const key = args[0];
+    var key = args[0];
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    const val = ctx.store.get(ctx.db, key);
+    var val = ctx.store.get(ctx.db, key);
     if (val === undefined) return encoder.integerReply(0);
 
     return encoder.integerReply(Buffer.byteLength(val));
@@ -264,19 +280,19 @@ function cmdStrlen(args, ctx) {
 function cmdGetrange(args, ctx) {
     if (args.length !== 3) return encoder.wrongArgCount('getrange');
 
-    const key = args[0];
+    var key = args[0];
     if (!ctx.store.checkType(ctx.db, key, TYPE_STRING)) {
         return encoder.wrongType();
     }
 
-    const val = ctx.store.get(ctx.db, key);
+    var val = ctx.store.get(ctx.db, key);
     if (val === undefined) return encoder.encodeBulkString('');
 
-    let start = parseInt(args[1], 10);
-    let end = parseInt(args[2], 10);
-    if (isNaN(start) || isNaN(end)) return encoder.encodeError('ERR value is not an integer or out of range');
+    var start = validate.strictParseInt(args[1]);
+    var end = validate.strictParseInt(args[2]);
+    if (start === null || end === null) return encoder.encodeError('ERR value is not an integer or out of range');
 
-    const len = val.length;
+    var len = val.length;
     if (start < 0) start = Math.max(0, len + start);
     if (end < 0) end = len + end;
     if (start > end || start >= len) return encoder.encodeBulkString('');

@@ -1,17 +1,18 @@
 'use strict';
 
-const encoder = require('../protocol/encoder');
-const { TYPE_SET } = require('../datastore/store');
+var encoder = require('../protocol/encoder');
+var TYPE_SET = require('../datastore/store').TYPE_SET;
+var validate = require('../utils/validate');
 
 function cmdSadd(args, ctx) {
     if (args.length < 2) return encoder.wrongArgCount('sadd');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    let set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     if (set === undefined) set = new Set();
 
-    let added = 0;
-    for (let i = 1; i < args.length; i++) {
+    var added = 0;
+    for (var i = 1; i < args.length; i++) {
         if (!set.has(args[i])) {
             set.add(args[i]);
             added++;
@@ -26,14 +27,15 @@ function cmdSrem(args, ctx) {
     if (args.length < 2) return encoder.wrongArgCount('srem');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     if (!set) return encoder.integerReply(0);
 
-    let removed = 0;
-    for (let i = 1; i < args.length; i++) {
+    var removed = 0;
+    for (var i = 1; i < args.length; i++) {
         if (set.delete(args[i])) removed++;
     }
 
+    if (removed > 0) ctx.store.markDirty(ctx.db, args[0]);
     if (set.size === 0) ctx.store.deleteKey(ctx.db, args[0]);
     return encoder.integerReply(removed);
 }
@@ -42,7 +44,7 @@ function cmdSmembers(args, ctx) {
     if (args.length !== 1) return encoder.wrongArgCount('smembers');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     if (!set || set.size === 0) return encoder.emptyArray();
     return encoder.encodeArray(Array.from(set));
 }
@@ -51,7 +53,7 @@ function cmdSismember(args, ctx) {
     if (args.length !== 2) return encoder.wrongArgCount('sismember');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     if (!set) return encoder.integerReply(0);
     return encoder.integerReply(set.has(args[1]) ? 1 : 0);
 }
@@ -60,9 +62,9 @@ function cmdSmismember(args, ctx) {
     if (args.length < 2) return encoder.wrongArgCount('smismember');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
-    const result = [];
-    for (let i = 1; i < args.length; i++) {
+    var set = ctx.store.get(ctx.db, args[0]);
+    var result = [];
+    for (var i = 1; i < args.length; i++) {
         result.push(set && set.has(args[i]) ? 1 : 0);
     }
     return encoder.encodeArray(result);
@@ -72,20 +74,20 @@ function cmdScard(args, ctx) {
     if (args.length !== 1) return encoder.wrongArgCount('scard');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     return encoder.integerReply(set ? set.size : 0);
 }
 
 function cmdSunion(args, ctx) {
     if (args.length < 1) return encoder.wrongArgCount('sunion');
 
-    const combined = new Set();
+    var combined = new Set();
 
-    for (let i = 0; i < args.length; i++) {
+    for (var i = 0; i < args.length; i++) {
         if (!ctx.store.checkType(ctx.db, args[i], TYPE_SET)) return encoder.wrongType();
-        const set = ctx.store.get(ctx.db, args[i]);
+        var set = ctx.store.get(ctx.db, args[i]);
         if (set) {
-            for (const member of set) combined.add(member);
+            for (var member of set) combined.add(member);
         }
     }
 
@@ -95,20 +97,20 @@ function cmdSunion(args, ctx) {
 function cmdSinter(args, ctx) {
     if (args.length < 1) return encoder.wrongArgCount('sinter');
 
-    for (let i = 0; i < args.length; i++) {
+    for (var i = 0; i < args.length; i++) {
         if (!ctx.store.checkType(ctx.db, args[i], TYPE_SET)) return encoder.wrongType();
     }
 
-    const firstSet = ctx.store.get(ctx.db, args[0]);
+    var firstSet = ctx.store.get(ctx.db, args[0]);
     if (!firstSet || firstSet.size === 0) return encoder.emptyArray();
 
-    const result = new Set(firstSet);
+    var result = new Set(firstSet);
 
-    for (let i = 1; i < args.length; i++) {
-        const otherSet = ctx.store.get(ctx.db, args[i]);
+    for (var j = 1; j < args.length; j++) {
+        var otherSet = ctx.store.get(ctx.db, args[j]);
         if (!otherSet) return encoder.emptyArray();
-        for (const member of result) {
-            if (!otherSet.has(member)) result.delete(member);
+        for (var m of result) {
+            if (!otherSet.has(m)) result.delete(m);
         }
         if (result.size === 0) return encoder.emptyArray();
     }
@@ -119,19 +121,19 @@ function cmdSinter(args, ctx) {
 function cmdSdiff(args, ctx) {
     if (args.length < 1) return encoder.wrongArgCount('sdiff');
 
-    for (let i = 0; i < args.length; i++) {
+    for (var i = 0; i < args.length; i++) {
         if (!ctx.store.checkType(ctx.db, args[i], TYPE_SET)) return encoder.wrongType();
     }
 
-    const firstSet = ctx.store.get(ctx.db, args[0]);
+    var firstSet = ctx.store.get(ctx.db, args[0]);
     if (!firstSet || firstSet.size === 0) return encoder.emptyArray();
 
-    const result = new Set(firstSet);
+    var result = new Set(firstSet);
 
-    for (let i = 1; i < args.length; i++) {
-        const otherSet = ctx.store.get(ctx.db, args[i]);
+    for (var j = 1; j < args.length; j++) {
+        var otherSet = ctx.store.get(ctx.db, args[j]);
         if (otherSet) {
-            for (const member of otherSet) result.delete(member);
+            for (var m of otherSet) result.delete(m);
         }
     }
 
@@ -142,36 +144,36 @@ function cmdSrandmember(args, ctx) {
     if (args.length < 1 || args.length > 2) return encoder.wrongArgCount('srandmember');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     if (!set || set.size === 0) {
         return args.length === 2 ? encoder.emptyArray() : encoder.nullBulk();
     }
 
-    const members = Array.from(set);
+    var members = Array.from(set);
 
     if (args.length === 1) {
         return encoder.encodeBulkString(members[Math.floor(Math.random() * members.length)]);
     }
 
-    let count = parseInt(args[1], 10);
-    if (isNaN(count)) return encoder.encodeError('ERR value is not an integer or out of range');
+    var count = validate.strictParseInt(args[1]);
+    if (count === null) return encoder.encodeError('ERR value is not an integer or out of range');
 
-    const result = [];
+    var result = [];
 
     if (count >= 0) {
-        const shuffled = members.slice();
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            const tmp = shuffled[i];
+        var shuffled = members.slice();
+        for (var i = shuffled.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = shuffled[i];
             shuffled[i] = shuffled[j];
             shuffled[j] = tmp;
         }
-        for (let i = 0; i < Math.min(count, shuffled.length); i++) {
-            result.push(shuffled[i]);
+        for (var si = 0; si < Math.min(count, shuffled.length); si++) {
+            result.push(shuffled[si]);
         }
     } else {
-        const absCount = Math.abs(count);
-        for (let i = 0; i < absCount; i++) {
+        var absCount = Math.abs(count);
+        for (var ni = 0; ni < absCount; ni++) {
             result.push(members[Math.floor(Math.random() * members.length)]);
         }
     }
@@ -183,32 +185,34 @@ function cmdSpop(args, ctx) {
     if (args.length < 1 || args.length > 2) return encoder.wrongArgCount('spop');
     if (!ctx.store.checkType(ctx.db, args[0], TYPE_SET)) return encoder.wrongType();
 
-    const set = ctx.store.get(ctx.db, args[0]);
+    var set = ctx.store.get(ctx.db, args[0]);
     if (!set || set.size === 0) {
         return args.length === 2 ? encoder.emptyArray() : encoder.nullBulk();
     }
 
-    const members = Array.from(set);
+    var members = Array.from(set);
 
     if (args.length === 1) {
-        const idx = Math.floor(Math.random() * members.length);
-        const popped = members[idx];
+        var idx = Math.floor(Math.random() * members.length);
+        var popped = members[idx];
         set.delete(popped);
+        ctx.store.markDirty(ctx.db, args[0]);
         if (set.size === 0) ctx.store.deleteKey(ctx.db, args[0]);
         return encoder.encodeBulkString(popped);
     }
 
-    let count = parseInt(args[1], 10);
-    if (isNaN(count) || count < 0) return encoder.encodeError('ERR value is not an integer or out of range');
+    var count = validate.strictParseInt(args[1]);
+    if (count === null || count < 0) return encoder.encodeError('ERR value is not an integer or out of range');
 
-    const result = [];
-    for (let i = 0; i < count && set.size > 0; i++) {
-        const arr = Array.from(set);
-        const idx = Math.floor(Math.random() * arr.length);
-        result.push(arr[idx]);
-        set.delete(arr[idx]);
+    var result = [];
+    for (var pi = 0; pi < count && set.size > 0; pi++) {
+        var arr = Array.from(set);
+        var pidx = Math.floor(Math.random() * arr.length);
+        result.push(arr[pidx]);
+        set.delete(arr[pidx]);
     }
 
+    ctx.store.markDirty(ctx.db, args[0]);
     if (set.size === 0) ctx.store.deleteKey(ctx.db, args[0]);
     return encoder.encodeArray(result);
 }

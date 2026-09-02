@@ -1,172 +1,184 @@
 'use strict';
 
-const net = require('net');
-const { ServerConfig } = require('./config');
-const { DataStore } = require('./datastore/store');
-const { ClientConnection } = require('./connection');
-const { PubSubBroker } = require('./commands/pubsub');
-const { RdbPersistence } = require('./persistence/rdb');
-const { AofPersistence } = require('./persistence/aof');
-const { getLogger } = require('./utils/logger');
-const { dispatch } = require('./commands/registry');
+var net = require('net');
+var ServerConfig = require('./config').ServerConfig;
+var DataStore = require('./datastore/store').DataStore;
+var ClientConnection = require('./connection').ClientConnection;
+var PubSubBroker = require('./commands/pubsub').PubSubBroker;
+var RdbPersistence = require('./persistence/rdb').RdbPersistence;
+var AofPersistence = require('./persistence/aof').AofPersistence;
+var logger = require('./utils/logger');
+var registry = require('./commands/registry');
 
-class RedisGenServer {
-    constructor(options) {
-        this.config = new ServerConfig(options);
-        this.log = getLogger(this.config.get('loglevel'));
-        this.store = new DataStore(this.config.get('databases'));
-        this.pubsub = new PubSubBroker();
-        this.rdb = new RdbPersistence(this.config, this.store);
-        this.aof = new AofPersistence(this.config, this.store);
-        this._clients = new Set();
-        this._server = null;
-        this._startTime = Date.now();
-    }
-
-    start() {
-        const port = this.config.get('port');
-        const bind = this.config.get('bind');
-
-        this._printBanner(port);
-
-        this._loadData();
-
-        this._server = net.createServer((socket) => {
-            this._onConnection(socket);
-        });
-
-        this._server.maxConnections = 10000;
-
-        this._server.on('error', (err) => {
-            if (err.code === 'EADDRINUSE') {
-                this.log.error('Port ' + port + ' is already in use. Shutting down.');
-                process.exit(1);
-            }
-            this.log.error('Server error: ' + err.message);
-        });
-
-        this._server.listen(port, bind, () => {
-            this.log.info('Ready to accept connections on port ' + port);
-        });
-
-        this.store.expiry.startActiveSweep(this.store, this.config.get('hz'));
-        this.rdb.startAutoSave();
-
-        if (this.config.get('appendonly')) {
-            this.aof.open();
-        }
-
-        this._setupShutdown();
-    }
-
-    _onConnection(socket) {
-        const conn = new ClientConnection(socket, this);
-        this._clients.add(conn);
-        this.log.debug('Client connected: ' + conn.remoteAddr + ' (id=' + conn.id + ')');
-    }
-
-    removeClient(conn) {
-        this._clients.delete(conn);
-        this.log.debug('Client disconnected: ' + conn.remoteAddr + ' (id=' + conn.id + ')');
-    }
-
-    get clientCount() {
-        return this._clients.size;
-    }
-
-    _loadData() {
-        const loaded = this.rdb.load();
-
-        if (this.config.get('appendonly')) {
-            const ctx = {
-                db: 0,
-                store: this.store,
-                config: this.config,
-                connection: { db: 0, id: 0, name: null },
-                pubsub: this.pubsub,
-                clientCount: 0
-            };
-
-            const count = this.aof.replay(dispatch, ctx);
-            if (count > 0) {
-                this.log.info('AOF: replayed ' + count + ' commands');
-            }
-        }
-    }
-
-    _printBanner(port) {
-        const lines = [
-            '',
-            '  ____          _ _      ____',
-            ' |  _ \\ ___  __| (_)___ / ___| ___ _ __',
-            " | |_) / _ \\/ _` | / __| |  _ / _ \\ '_ \\",
-            ' |  _ <  __/ (_| | \\__ \\ |_| |  __/ | | |',
-            ' |_| \\_\\___|\\__,_|_|___/\\____|\\___|_| |_|',
-            '',
-            '  Port: ' + port,
-            '  PID:  ' + process.pid,
-            '  Node: ' + process.version,
-            ''
-        ];
-        for (const line of lines) {
-            process.stdout.write(line + '\n');
-        }
-    }
-
-    _setupShutdown() {
-        const graceful = () => {
-            this.log.info('Shutting down...');
-
-            this.store.expiry.stopActiveSweep();
-            this.rdb.stopAutoSave();
-
-            this.rdb.save();
-            this.aof.close();
-
-            for (const client of this._clients) {
-                client.destroy();
-            }
-            this._clients.clear();
-
-            if (this._server) {
-                this._server.close(() => {
-                    this.log.info('Server stopped.');
-                    process.exit(0);
-                });
-            }
-
-            setTimeout(() => {
-                process.exit(0);
-            }, 3000);
-        };
-
-        process.on('SIGINT', graceful);
-        process.on('SIGTERM', graceful);
-    }
-
-    stop() {
-        this.store.expiry.stopActiveSweep();
-        this.rdb.stopAutoSave();
-        this.aof.close();
-
-        for (const client of this._clients) {
-            client.destroy();
-        }
-        this._clients.clear();
-
-        if (this._server) {
-            this._server.close();
-            this._server = null;
-        }
-    }
+function RedisGenServer(options) {
+    this.config = new ServerConfig(options);
+    this.log = logger.getLogger(this.config.get('loglevel'));
+    this.store = new DataStore(this.config.get('databases'), this.config);
+    this.pubsub = new PubSubBroker();
+    this.rdb = new RdbPersistence(this.config, this.store);
+    this.aof = new AofPersistence(this.config, this.store);
+    this._clients = new Set();
+    this._server = null;
+    this._startTime = Date.now();
 }
 
-function parseCliArgs() {
-    const args = process.argv.slice(2);
-    const options = {};
+RedisGenServer.prototype.start = function () {
+    var self = this;
+    var port = this.config.get('port');
+    var bind = this.config.get('bind');
 
-    for (let i = 0; i < args.length; i++) {
-        const arg = args[i].replace(/^--/, '');
+    this._printBanner(port);
+
+    this._loadData();
+
+    this._server = net.createServer(function (socket) {
+        self._onConnection(socket);
+    });
+
+    this._server.maxConnections = 10000;
+
+    this._server.on('error', function (err) {
+        if (err.code === 'EADDRINUSE') {
+            self.log.error('Port ' + port + ' is already in use. Shutting down.');
+            process.exit(1);
+        }
+        self.log.error('Server error: ' + err.message);
+    });
+
+    this._server.listen(port, bind, function () {
+        self.log.info('Ready to accept connections on port ' + port);
+    });
+
+    this.store.expiry.startActiveSweep(this.store, this.config.get('hz'));
+    this.rdb.startAutoSave();
+
+    if (this.config.get('appendonly')) {
+        this.aof.open();
+    }
+
+    this._setupShutdown();
+};
+
+RedisGenServer.prototype._onConnection = function (socket) {
+    var conn = new ClientConnection(socket, this);
+    this._clients.add(conn);
+    this.log.debug('Client connected: ' + conn.remoteAddr + ' (id=' + conn.id + ')');
+};
+
+RedisGenServer.prototype.removeClient = function (conn) {
+    this._clients.delete(conn);
+    this.log.debug('Client disconnected: ' + conn.remoteAddr + ' (id=' + conn.id + ')');
+};
+
+Object.defineProperty(RedisGenServer.prototype, 'clientCount', {
+    get: function () { return this._clients.size; }
+});
+
+RedisGenServer.prototype._loadData = function () {
+    var useAof = this.config.get('appendonly');
+
+    if (useAof) {
+        var ctx = {
+            db: 0,
+            store: this.store,
+            config: this.config,
+            connection: { db: 0, id: 0, name: null, txQueue: null },
+            pubsub: this.pubsub,
+            clientCount: 0,
+            aofBuffer: null
+        };
+
+        this.store._restoring = true;
+        var count = this.aof.replay(registry.dispatch, ctx);
+        this.store._restoring = false;
+        this.store.resetDirty();
+
+        if (count > 0) {
+            this.log.info('AOF: replayed ' + count + ' commands');
+        }
+    } else {
+        this.rdb.load();
+    }
+};
+
+RedisGenServer.prototype._printBanner = function (port) {
+    var lines = [
+        '',
+        '  ____          _ _      ____',
+        ' |  _ \\ ___  __| (_)___ / ___| ___ _ __',
+        " | |_) / _ \\/ _` | / __| |  _ / _ \\ '_ \\",
+        ' |  _ <  __/ (_| | \\__ \\ |_| |  __/ | | |',
+        ' |_| \\_\\___|\\__,_|_|___/\\____|\\___|_| |_|',
+        '',
+        '  Port: ' + port,
+        '  PID:  ' + process.pid,
+        '  Node: ' + process.version,
+        ''
+    ];
+    for (var i = 0; i < lines.length; i++) {
+        process.stdout.write(lines[i] + '\n');
+    }
+};
+
+RedisGenServer.prototype._setupShutdown = function () {
+    var self = this;
+    var graceful = function () {
+        self.log.info('Shutting down...');
+
+        self.store.expiry.stopActiveSweep();
+        self.rdb.stopAutoSave();
+
+        self.rdb.save();
+
+        if (self.config.get('appendonly')) {
+            self.aof.truncate();
+        }
+
+        self.aof.close();
+
+        for (var client of self._clients) {
+            client.destroy();
+        }
+        self._clients.clear();
+
+        if (self._server) {
+            self._server.close(function () {
+                self.log.info('Server stopped.');
+                process.exit(0);
+            });
+        }
+
+        setTimeout(function () {
+            process.exit(0);
+        }, 3000);
+    };
+
+    process.on('SIGINT', graceful);
+    process.on('SIGTERM', graceful);
+};
+
+RedisGenServer.prototype.stop = function () {
+    this.store.expiry.stopActiveSweep();
+    this.rdb.stopAutoSave();
+    this.aof.close();
+
+    for (var client of this._clients) {
+        client.destroy();
+    }
+    this._clients.clear();
+
+    if (this._server) {
+        this._server.close();
+        this._server = null;
+    }
+};
+
+function parseCliArgs() {
+    var args = process.argv.slice(2);
+    var options = {};
+
+    for (var i = 0; i < args.length; i++) {
+        var arg = args[i].replace(/^--/, '');
 
         switch (arg) {
             case 'port':
@@ -205,9 +217,9 @@ function parseCliArgs() {
 }
 
 if (require.main === module) {
-    const options = parseCliArgs();
-    const server = new RedisGenServer(options);
+    var options = parseCliArgs();
+    var server = new RedisGenServer(options);
     server.start();
 }
 
-module.exports = { RedisGenServer };
+module.exports = { RedisGenServer: RedisGenServer };
