@@ -41,10 +41,11 @@
         onboardingOverlay: document.getElementById('onboarding-overlay'),
         onboardingModal: document.getElementById('onboarding-modal'),
         btnCloseOnboarding: document.getElementById('btn-close-onboarding'),
-        onboardingSteps: document.querySelectorAll('.onboarding-step'),
         onboardingDotsContainer: document.getElementById('onboarding-dots'),
         btnOnboardingPrev: document.getElementById('btn-onboarding-prev'),
-        btnOnboardingNext: document.getElementById('btn-onboarding-next')
+        btnOnboardingNext: document.getElementById('btn-onboarding-next'),
+        onboardingTitle: document.getElementById('onboarding-title'),
+        onboardingText: document.getElementById('onboarding-text')
     };
 
     var currentOnboardingStep = 0;
@@ -60,6 +61,30 @@
     els.btnRefreshKeys.addEventListener('click', refreshKeys);
     els.btnCloseDetail.addEventListener('click', function () { els.keyDetail.classList.add('hidden'); });
     els.dbSelect.addEventListener('change', onDbChange);
+    
+
+
+    // Navigation links smooth scroll
+    var navLinks = {
+        'nav-dashboard': 'app',
+        'nav-browser': 'tour-browser',
+        'nav-cli': 'tour-terminal',
+        'nav-settings': 'tour-stats'
+    };
+    for (var id in navLinks) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', (function(targetId) {
+                return function(e) {
+                    e.preventDefault();
+                    var target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                };
+            })(navLinks[id]));
+        }
+    }
 
     function doConnect() {
         els.loginError.textContent = '';
@@ -133,12 +158,12 @@
 
     function setConnected() {
         els.status.textContent = 'Connected';
-        els.status.className = 'px-4 py-2 rounded-lg cursor-default bg-emerald-500/20 text-emerald-400 font-bold';
+        els.status.className = 'px-3 py-1 rounded cursor-default neo-inset text-accent-green font-bold text-sm';
     }
 
     function setDisconnected() {
         els.status.textContent = 'Disconnected';
-        els.status.className = 'px-4 py-2 rounded-lg cursor-default bg-rose-500/20 text-rose-400 font-bold';
+        els.status.className = 'px-3 py-1 rounded cursor-default neo-inset text-accent-red font-bold text-sm';
         if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
         els.overlay.classList.remove('hidden');
         els.app.classList.add('hidden');
@@ -420,8 +445,8 @@
         var step = (w - pad * 2) / (MAX_MEM_POINTS - 1);
 
         var gradient = ctx.createLinearGradient(0, 0, 0, h);
-        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
-        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.02)');
+        gradient.addColorStop(0, 'rgba(24, 133, 226, 0.2)');
+        gradient.addColorStop(1, 'rgba(24, 133, 226, 0.0)');
 
         ctx.beginPath();
         ctx.moveTo(pad, h - pad);
@@ -445,7 +470,7 @@
             if (j === 0) ctx.moveTo(x2, y2);
             else ctx.lineTo(x2, y2);
         }
-        ctx.strokeStyle = '#6366f1';
+        ctx.strokeStyle = '#1885E2';
         ctx.lineWidth = 2;
         ctx.stroke();
     }
@@ -457,60 +482,107 @@
     function initOnboarding() {
         if (!els.onboardingOverlay) return;
 
+        var tourSteps = [
+            { target: null, title: "Welcome to RedisGen", text: "RedisGen is your in-memory datastore playground. Let's take a quick tour of the dashboard!" },
+            { target: 'tour-stats', title: "Live Metrics", text: "Monitor server memory, connected clients, total keys, and uptime in real-time." },
+            { target: 'tour-chart', title: "Memory Chart", text: "Track memory usage over time. (Sample data shown while testing)." },
+            { target: 'tour-terminal', title: "Interactive Terminal", text: "Run any Redis command right from your browser. Try typing 'PING' or 'SET hello world'." },
+            { target: 'tour-browser', title: "Key Browser", text: "Search, view, and inspect all keys in the selected database visually." }
+        ];
+
         els.onboardingDotsContainer.innerHTML = '';
-        for (var i = 0; i < els.onboardingSteps.length; i++) {
+        for (var i = 0; i < tourSteps.length; i++) {
             var dot = document.createElement('div');
-            dot.className = 'w-2 h-2 rounded-full transition-colors duration-300 ' + (i === 0 ? 'bg-primary' : 'bg-slate-700');
+            dot.className = 'w-2 h-2 rounded-full transition-colors duration-300 ' + (i === 0 ? 'bg-accent-blue' : 'bg-[#C4C9D4]');
             els.onboardingDotsContainer.appendChild(dot);
         }
 
-        function showStep(step) {
-            els.onboardingSteps.forEach(function(s, idx) {
-                if (idx === step) {
-                    s.classList.remove('hidden');
+        var currentHighlight = null;
+
+        function positionModal(targetId) {
+            if (!targetId) {
+                // Center modal
+                els.onboardingModal.style.top = '50%';
+                els.onboardingModal.style.left = '50%';
+                els.onboardingModal.style.transform = 'translate(-50%, -50%)';
+                return;
+            }
+
+            var target = document.getElementById(targetId);
+            if (!target) return;
+
+            var rect = target.getBoundingClientRect();
+            
+            // Try placing it to the left or right, or bottom/top
+            els.onboardingModal.style.transform = 'none';
+            var baseTop = Math.max(20, rect.top + (rect.height / 2) - 100);
+            els.onboardingModal.style.top = Math.min(window.innerHeight - 220, baseTop) + 'px';
+            
+            if (rect.left > 400) {
+                // place left
+                els.onboardingModal.style.left = (rect.left - 370) + 'px';
+            } else if (window.innerWidth - rect.right > 400) {
+                // place right
+                els.onboardingModal.style.left = (rect.right + 20) + 'px';
+            } else {
+                // place top or bottom depending on available space
+                if (rect.bottom + 180 > window.innerHeight && rect.top > 180) {
+                    els.onboardingModal.style.top = (rect.top - 160) + 'px';
                 } else {
-                    s.classList.add('hidden');
+                    els.onboardingModal.style.top = Math.min(window.innerHeight - 180, rect.bottom + 20) + 'px';
                 }
-            });
+                els.onboardingModal.style.left = '50%';
+                els.onboardingModal.style.transform = 'translateX(-50%)';
+            }
+        }
+
+        function showStep(stepIdx) {
+            var step = tourSteps[stepIdx];
+            
+            els.onboardingTitle.innerHTML = '<span class="material-symbols-outlined">explore</span> ' + step.title;
+            els.onboardingText.textContent = step.text;
 
             var dots = els.onboardingDotsContainer.children;
             for (var j = 0; j < dots.length; j++) {
-                dots[j].className = 'w-2 h-2 rounded-full transition-colors duration-300 ' + (j === step ? 'bg-primary' : 'bg-slate-700');
+                dots[j].className = 'w-2 h-2 rounded-full transition-colors duration-300 ' + (j === stepIdx ? 'bg-accent-blue' : 'bg-[#C4C9D4]');
             }
 
-            if (step === 0) {
-                els.btnOnboardingPrev.classList.add('hidden');
-            } else {
-                els.btnOnboardingPrev.classList.remove('hidden');
+            els.btnOnboardingPrev.classList.toggle('hidden', stepIdx === 0);
+            els.btnOnboardingNext.textContent = stepIdx === tourSteps.length - 1 ? "Got it!" : "Next";
+
+            if (currentHighlight) {
+                currentHighlight.classList.remove('onboarding-highlight');
             }
 
-            if (step === els.onboardingSteps.length - 1) {
-                els.btnOnboardingNext.textContent = 'Let\'s Go!';
-            } else {
-                els.btnOnboardingNext.textContent = 'Next';
+            if (step.target) {
+                currentHighlight = document.getElementById(step.target);
+                if (currentHighlight) {
+                    currentHighlight.classList.add('onboarding-highlight');
+                    currentHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
+            
+            positionModal(step.target);
         }
 
         function openModal() {
             currentOnboardingStep = 0;
-            showStep(0);
             els.onboardingOverlay.classList.remove('hidden');
-            setTimeout(function() {
-                els.onboardingModal.classList.remove('scale-95', 'opacity-0');
-                els.onboardingModal.classList.add('scale-100', 'opacity-100');
-            }, 10);
+            els.onboardingModal.classList.remove('hidden');
+            showStep(0);
         }
 
         function closeModal() {
-            els.onboardingModal.classList.remove('scale-100', 'opacity-100');
-            els.onboardingModal.classList.add('scale-95', 'opacity-0');
-            setTimeout(function() {
-                els.onboardingOverlay.classList.add('hidden');
-            }, 300);
+            els.onboardingOverlay.classList.add('hidden');
+            els.onboardingModal.classList.add('hidden');
+            if (currentHighlight) {
+                currentHighlight.classList.remove('onboarding-highlight');
+                currentHighlight = null;
+            }
         }
 
         els.btnOnboardingNext.addEventListener('click', function() {
-            if (currentOnboardingStep < els.onboardingSteps.length - 1) {
+            if (currentOnboardingStep < tourSteps.length - 1) {
                 currentOnboardingStep++;
                 showStep(currentOnboardingStep);
             } else {

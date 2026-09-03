@@ -1,292 +1,274 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>RedisGen Dashboard</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;family=Public+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="style.css">
-<script id="tailwind-config">
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>RediForge - Main Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="style.css" />
+    <script>
         tailwind.config = {
-            darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        primary: "#6366f1",
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.75rem",
-                        "lg": "1rem",
-                        "xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                    fontFamily: {
-                        headline: ["Inter", "sans-serif"],
-                        display: ["Inter", "sans-serif"],
-                        body: ["Inter", "sans-serif"],
-                        label: ["Public Sans", "sans-serif"]
-                    },
-                },
-            },
+                        "accent-blue": "#1885E2",
+                        "accent-red": "#E13B3B",
+                        "accent-green": "#3CE0AD",
+                    }
+                }
+            }
         }
     </script>
-<style>
-        body {
-            background-color: #1e293b;
-            color: #f8fafc;
-        }
-        .neumorphic-card {
-            background: #1e293b;
-            box-shadow: 6px 6px 12px #0f172a, -6px -6px 12px #2d3b54;
-            border-radius: 0.75rem;
-        }
-        .neumorphic-inset {
-            background: #1e293b;
-            box-shadow: inset 4px 4px 8px #0f172a, inset -4px -4px 8px #2d3b54;
-            border-radius: 0.75rem;
-        }
-        .neumorphic-btn {
-            background: #1e293b;
-            box-shadow: 4px 4px 8px #0f172a, -4px -4px 8px #2d3b54;
-            border-radius: 0.5rem;
-            transition: all 0.2s ease;
-        }
-        .neumorphic-btn:active {
-            box-shadow: inset 2px 2px 5px #0f172a, inset -2px -2px 5px #2d3b54;
-        }
-        .hidden { display: none !important; }
-        .key-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-family: monospace;
-            font-size: 0.875rem;
-        }
-        .key-item:hover {
-            background: rgba(45, 59, 84, 0.5);
-        }
-        .key-item .key-name { color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 0.5rem; }
-        .key-item .key-type {
-            font-size: 0.625rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 4px 8px;
-            border-radius: 9999px;
-            letter-spacing: 0.05em;
-        }
-        .detail-type-badge {
-            font-size: 0.625rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 4px 8px;
-            border-radius: 9999px;
-            letter-spacing: 0.05em;
-        }
-        .key-type-string { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
-        .key-type-list { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-        .key-type-hash { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
-        .key-type-set { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
-        .key-type-zset { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
-        .terminal-output .cmd-line { color: #22d3ee; }
-        .terminal-output .resp-line { color: #4ade80; }
-        .terminal-output .err-line { color: #f87171; }
-        .terminal-output .info-line { color: #94a3b8; font-style: italic; }
-        .status-badge {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 700;
-            cursor: default;
-        }
-        .status-badge.connected {
-            background-color: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-        }
-        .status-badge.disconnected {
-            background-color: rgba(244, 63, 94, 0.2);
-            color: #fb7185;
-        }
-    </style>
 </head>
-<body class="font-body antialiased min-h-screen flex flex-col">
-<div id="login-overlay" class="hidden">
-    <input type="text" id="ws-url" value="wss://redisgen.onrender.com">
-    <input type="text" id="auth-pass" value="XCNbmw19309#">
-    <p id="login-error"></p>
-    <button id="btn-connect">Connect</button>
-</div>
-<div id="app" class="app flex flex-col flex-grow">
-    <nav class="flex justify-between items-center w-full px-6 py-4 z-50 bg-[#1e293b] docked full-width top-0 shadow-[6px_6px_12px_#0a0f1d,-6px_-6px_12px_#1e293b]">
-        <div class="flex items-center space-x-4">
-            <span class="text-xl font-display font-black tracking-tighter text-[#60a5fa]">RedisGen</span>
-            <button id="btn-help" class="neumorphic-btn p-2 text-slate-400 hover:text-slate-200 ml-4 rounded-full flex items-center justify-center" title="Help Guide">
-                <span class="material-symbols-outlined text-[20px]">help</span>
+<body class="antialiased min-h-screen overflow-x-hidden flex flex-col redisgen-container">
+
+    <!-- TopNavBar Component -->
+    <header class="fixed top-0 left-0 w-full z-40 flex justify-between items-center px-8 py-4 bg-[#E8EBF2] shadow-[0_4px_10px_rgba(196,201,212,0.5)] border-b border-white/50" id="tour-header">
+        <div class="flex items-center gap-6">
+            <div class="text-2xl font-bold text-[#2A2F33] tracking-tighter flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-blue" style="font-size: 28px;">database</span>
+                RediForge
+            </div>
+            <span id='connection-status' class='hidden'></span>
+            <nav class="hidden md:flex gap-4">
+                <a id="nav-dashboard" class="text-accent-blue font-semibold border-b-2 border-accent-blue pb-1 transition-colors cursor-pointer">Dashboard</a>
+                <a id="nav-browser" class="text-[#7E8490] hover:text-accent-blue transition-colors font-medium cursor-pointer">Browser</a>
+                <a id="nav-cli" class="text-[#7E8490] hover:text-accent-blue transition-colors font-medium cursor-pointer">CLI</a>
+                <a id="nav-settings" class="text-[#7E8490] hover:text-accent-blue transition-colors font-medium cursor-pointer">Settings</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="btn-help" class="neo-button p-2 text-accent-blue rounded-full flex items-center justify-center">
+                <span class="material-symbols-outlined">help</span>
+            </button>
+            <div class="neo-button px-2 py-1 flex items-center gap-1" id="tour-db-select">
+                <span class="material-symbols-outlined text-accent-green text-[18px]">dns</span>
+                <select id="db-select" class="bg-transparent font-mono text-sm font-bold text-[#2A2F33] outline-none cursor-pointer border-none p-0 focus:ring-0">
+                    <option value="0">db0</option>
+                    <option value="1">db1</option>
+                    <option value="2">db2</option>
+                    <option value="3">db3</option>
+                    <option value="4">db4</option>
+                    <option value="5">db5</option>
+                    <option value="6">db6</option>
+                    <option value="7">db7</option>
+                    <option value="8">db8</option>
+                    <option value="9">db9</option>
+                    <option value="10">db10</option>
+                    <option value="11">db11</option>
+                    <option value="12">db12</option>
+                    <option value="13">db13</option>
+                    <option value="14">db14</option>
+                    <option value="15">db15</option>
+                </select>
+            </div>
+            <button id='btn-disconnect' class="neo-button px-4 py-2 text-accent-red">
+                Disconnect
             </button>
         </div>
-        <div class="flex items-center space-x-6 font-headline text-sm font-medium tracking-tight">
-            <div class="flex items-center space-x-4">
-                <select id="db-select" class="neumorphic-btn bg-[#1e293b] border-none text-slate-300 px-4 py-2 cursor-pointer outline-none focus:ring-0">
-                    <option value="0">db0</option><option value="1">db1</option><option value="2">db2</option><option value="3">db3</option>
-                    <option value="4">db4</option><option value="5">db5</option><option value="6">db6</option><option value="7">db7</option>
-                    <option value="8">db8</option><option value="9">db9</option><option value="10">db10</option><option value="11">db11</option>
-                    <option value="12">db12</option><option value="13">db13</option><option value="14">db14</option><option value="15">db15</option>
-                </select>
-                <button id="connection-status" class="px-4 py-2 text-slate-400 rounded-lg cursor-default">Disconnected</button>
-                <button id="btn-disconnect" class="px-4 py-2 text-primary font-bold rounded-lg neumorphic-btn">Disconnect</button>
+    </header>
+
+    <!-- Main Content Area -->
+    <div id="app" class="hidden flex-grow pt-[100px] px-8 pb-8">
+        
+        <!-- Server Stats Row -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="tour-stats">
+            <div class="neo-card p-4 flex flex-col gap-2">
+                <div class="flex justify-between items-center pb-2 mb-2">
+                    <span class="text-sm font-semibold text-[#7E8490] uppercase tracking-wider">Memory Usage</span>
+                    <div class="skill-indicator indicator-blue"></div>
+                </div>
+                <div id="stat-memory" class="text-3xl font-bold text-[#2A2F33]">1.2GB</div>
+                <div class="flex items-center gap-2 mt-auto">
+                    <div class="flex-grow h-2 neo-inset rounded-full overflow-hidden p-[1px]">
+                        <div class="h-full bg-accent-blue w-[30%] rounded-full shadow-[0_0_5px_rgba(24,133,226,0.5)]"></div>
+                    </div>
+                    <span class="text-xs font-bold text-[#7E8490]">/ 4GB</span>
+                </div>
             </div>
-        </div>
-    </nav>
-    <main class="flex-grow p-6 lg:p-8 flex flex-col gap-8 max-w-7xl mx-auto w-full">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <section class="lg:col-span-1 flex flex-col gap-6">
-                <div class="flex justify-between items-end">
-                    <h2 class="text-xl font-headline font-bold text-slate-200">Server Stats</h2>
-                    <span id="stats-uptime" class="text-xs font-mono text-slate-400">--</span>
+
+            <div class="neo-card p-4 flex flex-col gap-2">
+                <div class="flex justify-between items-center pb-2 mb-2">
+                    <span class="text-sm font-semibold text-[#7E8490] uppercase tracking-wider">Connected Clients</span>
+                    <div class="skill-indicator indicator-green"></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="neumorphic-card p-4 flex flex-col">
-                        <span class="text-sm font-label text-slate-400 mb-1">Memory</span>
-                        <span id="stat-memory" class="text-2xl font-display font-bold text-slate-100">--</span>
-                    </div>
-                    <div class="neumorphic-card p-4 flex flex-col">
-                        <span class="text-sm font-label text-slate-400 mb-1">Clients</span>
-                        <span id="stat-clients" class="text-2xl font-display font-bold text-slate-100">--</span>
-                    </div>
-                    <div class="neumorphic-card p-4 flex flex-col">
-                        <span class="text-sm font-label text-slate-400 mb-1">Total Keys</span>
-                        <span id="stat-keys" class="text-2xl font-display font-bold text-slate-100">--</span>
-                    </div>
-                    <div class="neumorphic-card p-4 flex flex-col">
-                        <span class="text-sm font-label text-slate-400 mb-1">Node</span>
-                        <span id="stat-node" class="text-lg font-display font-bold text-slate-100 mt-auto">--</span>
-                    </div>
+                <div id="stat-clients" class="text-3xl font-bold text-[#2A2F33]">124</div>
+                <div class="text-sm font-semibold text-accent-green mt-auto flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
+                    Live Connections
                 </div>
-                <div class="neumorphic-card p-4 flex-grow flex flex-col min-h-[160px]">
-                    <span class="text-sm font-label text-slate-400 mb-2">Memory History</span>
-                    <div class="flex-grow flex items-end justify-between pt-2">
-                        <canvas id="memory-chart" class="w-full h-full"></canvas>
-                    </div>
+            </div>
+
+            <div class="neo-card p-4 flex flex-col gap-2">
+                <div class="flex justify-between items-center pb-2 mb-2">
+                    <span class="text-sm font-semibold text-[#7E8490] uppercase tracking-wider">Total Keys</span>
+                    <div class="skill-indicator" style="background-color: #F5A623;"></div>
                 </div>
-            </section>
-            <section class="lg:col-span-2 flex flex-col h-full min-h-[350px]">
-                <div class="flex justify-between items-end mb-4">
-                    <h2 class="text-xl font-headline font-bold text-slate-200">Terminal</h2>
-                    <button id="btn-clear-terminal" class="neumorphic-btn px-3 py-1.5 text-xs font-label text-slate-300 flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 0;">delete</span>
-                        Clear
-                    </button>
+                <div id="stat-keys" class="text-3xl font-bold text-[#2A2F33]">45.2k</div>
+                <div class="text-sm font-semibold text-[#7E8490] mt-auto">
+                    +1.2k since yesterday
                 </div>
-                <div id="terminal-output" class="neumorphic-inset flex-grow p-4 font-mono text-sm overflow-y-auto flex flex-col relative h-64 mb-4">
+            </div>
+
+            <div class="neo-card p-4 flex flex-col gap-2">
+                <div class="flex justify-between items-center pb-2 mb-2">
+                    <span class="text-sm font-semibold text-[#7E8490] uppercase tracking-wider">Node Status</span>
+                    <div class="skill-indicator indicator-red"></div>
                 </div>
-                <div class="flex items-center text-slate-300 pt-2 border-t border-slate-700/50">
-                    <span class="text-emerald-400 mr-2 shrink-0 font-mono">redis-gen&gt;</span>
-                    <input type="text" id="terminal-input" class="bg-transparent border-none focus:ring-0 text-sm font-mono w-full text-slate-200 placeholder-slate-500 p-0" placeholder="Type a command..." spellcheck="false" autocomplete="off"/>
-                </div>
-            </section>
-        </div>
-        <section class="flex flex-col gap-6 mt-4">
-            <h2 class="text-xl font-headline font-bold text-slate-200">Key Browser</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[400px]">
-                <div class="md:col-span-1 neumorphic-card flex flex-col overflow-hidden">
-                    <div class="p-4 border-b border-slate-700/50">
-                        <div class="flex gap-2">
-                            <div class="neumorphic-inset flex items-center px-3 py-2 flex-grow">
-                                <span class="material-symbols-outlined text-slate-400 text-sm mr-2">search</span>
-                                <input type="text" id="key-filter" class="bg-transparent border-none focus:ring-0 text-sm w-full text-slate-200 placeholder-slate-500 p-0" placeholder="Filter pattern..." value="*">
-                            </div>
-                            <button id="btn-refresh-keys" class="neumorphic-btn px-3 py-2 text-slate-300" title="Refresh">
-                                <span class="material-symbols-outlined text-[18px]">refresh</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="key-list" class="flex-grow overflow-y-auto p-2 space-y-1">
-                    </div>
-                </div>
-                <div class="md:col-span-2 neumorphic-inset p-6 flex flex-col relative overflow-hidden">
-                    <div id="key-detail" class="hidden flex flex-col h-full">
-                        <div class="flex justify-between items-center mb-6">
-                            <div class="flex items-center gap-3">
-                                <h3 id="detail-key-name" class="font-mono text-lg text-slate-200 font-bold"></h3>
-                                <span id="detail-key-type" class="detail-type-badge"></span>
-                            </div>
-                            <div class="flex gap-3">
-                                <button id="btn-close-detail" class="neumorphic-btn p-2 text-slate-400 hover:text-red-400">
-                                    <span class="material-symbols-outlined text-[20px]">close</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div id="detail-content" class="flex-grow font-mono text-sm text-slate-300 whitespace-pre overflow-auto bg-[#1a2333] p-4 rounded-lg shadow-inner">
-                        </div>
-                    </div>
-                    <div id="key-detail-empty" class="flex-grow flex items-center justify-center text-slate-500 font-label text-sm">
-                        Select a key to view its contents
-                    </div>
+                <div id="stat-node" class="text-2xl font-bold text-[#2A2F33]">Master-01</div>
+                <div class="text-xs font-mono font-bold text-[#7E8490] mt-auto neo-inset px-2 py-1 rounded inline-block w-max">
+                    Uptime: <span id="stats-uptime">42d 18h</span>
                 </div>
             </div>
         </section>
-    </main>
-</div>
-<div id="onboarding-overlay" class="fixed inset-0 z-[100] bg-[#0a0f1d]/80 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 hidden">
-    <div class="neumorphic-card max-w-2xl w-full mx-4 p-8 flex flex-col relative transform transition-transform duration-300 scale-95 opacity-0" id="onboarding-modal">
-        <button id="btn-close-onboarding" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200">
-            <span class="material-symbols-outlined">close</span>
-        </button>
-        <div class="onboarding-step" data-step="0">
-            <h2 class="text-3xl font-display font-black text-slate-100 mb-4">Welcome to RedisGen! </h2>
-            <p class="text-slate-300 text-lg mb-6 leading-relaxed">
-                RedisGen is your sleek, high-performance, in-memory data store dashboard. With its new <strong>Neumorphism (Soft UI)</strong> design, interacting with your database is not only powerful but also visually stunning.
-            </p>
-            <p class="text-slate-300 text-lg mb-6">Let's take a quick tour of your new tools!</p>
-        </div>
-        <div class="onboarding-step hidden" data-step="1">
-            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Connection & Database</h2>
-            <ul class="text-slate-300 space-y-4 mb-6 list-disc list-inside">
-                <li><strong>Auto-Connect:</strong> The dashboard automatically connects in the background. Look for the green <em>Connected</em> badge!</li>
-                <li><strong>Database Selector:</strong> Use the top right dropdown (db0-db15) to isolate keys in different logical databases.</li>
-                <li><strong>Disconnect:</strong> Manually sever the connection using the Disconnect button.</li>
-            </ul>
-        </div>
-        <div class="onboarding-step hidden" data-step="2">
-            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Server Stats</h2>
-            <p class="text-slate-300 mb-4">Get a real-time pulse on your database's health.</p>
-            <ul class="text-slate-300 space-y-3 mb-6 list-disc list-inside">
-                <li><strong>Memory & Clients:</strong> Live metrics on RAM consumption and active connections.</li>
-                <li><strong>Total Keys:</strong> Number of keys stored in the active database.</li>
-                <li><strong>Memory Chart:</strong> A live-updating sparkline visualizing memory usage over time to help spot leaks at a glance.</li>
-            </ul>
-        </div>
-        <div class="onboarding-step hidden" data-step="3">
-            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Interactive Terminal</h2>
-            <p class="text-slate-300 mb-4">Direct command-line access to your RedisGen instance.</p>
-            <ul class="text-slate-300 space-y-3 mb-6 list-disc list-inside">
-                <li><strong>Run Commands:</strong> Type standard Redis commands like <code class="bg-[#0f172a] px-2 py-1 rounded text-emerald-400">PING</code> or <code class="bg-[#0f172a] px-2 py-1 rounded text-emerald-400">SET mykey "Hello"</code>.</li>
-                <li><strong>Instant Feedback:</strong> <span class="text-emerald-400">Green</span> for successful responses, <span class="text-rose-400">Red</span> for errors.</li>
-                <li><strong>History:</strong> Use the Up and Down arrow keys to cycle through previous commands.</li>
-            </ul>
-        </div>
-        <div class="onboarding-step hidden" data-step="4">
-            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Key Browser</h2>
-            <p class="text-slate-300 mb-4">Manage your data visually without needing to remember every key name.</p>
-            <ul class="text-slate-300 space-y-3 mb-6 list-disc list-inside">
-                <li><strong>Search & Scan:</strong> Filter keys using pattern matching (e.g., <code class="bg-[#0f172a] px-1 rounded text-slate-200">user:*</code>) and hit the Scan button.</li>
-                <li><strong>Type Badges:</strong> Every key has a colored badge indicating its data structure (String, List, Hash, Set, ZSet).</li>
-                <li><strong>Detail View:</strong> Click any key to automatically fetch and display its formatted JSON contents in the right pane.</li>
-            </ul>
-            <p class="text-emerald-400 font-bold text-xl mt-6 text-center">Enjoy your new dashboard! </p>
-        </div>
-        <div class="flex justify-between items-center mt-auto pt-6 border-t border-slate-700/50">
-            <div class="flex space-x-2" id="onboarding-dots">
+
+        <!-- Two Column Layout: Chart & Browser/Terminal -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[700px]">
+            
+            <!-- Left Column: Memory Chart & Terminal -->
+            <div class="lg:col-span-8 flex flex-col gap-8 h-full">
+                
+                <!-- Memory History Chart -->
+                <div class="neo-card flex-grow flex flex-col relative overflow-hidden" id="tour-chart">
+                    <div class="p-6 pb-2 flex justify-between items-center z-10">
+                        <h2 class="text-xl font-bold text-[#2A2F33] flex items-center gap-2">
+                            <span class="material-symbols-outlined text-accent-blue">show_chart</span>
+                            Memory History
+                        </h2>
+                        <div class="flex gap-2">
+                            <button class="neo-button px-3 py-1 text-xs">1H</button>
+                            <button class="neo-button neo-button-pressed text-accent-blue px-3 py-1 text-xs">24H</button>
+                            <button class="neo-button px-3 py-1 text-xs">7D</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative flex-grow mt-4 p-4 z-0">
+                        <canvas id="memory-chart" class="absolute inset-4"></canvas>
+                        <!-- SVG Fallback -->
+                        <svg style="display:none;" class="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)]" preserveAspectRatio="none" viewBox="0 0 100 100">
+                            <line stroke="rgba(0,0,0,0.05)" stroke-width="0.5" x1="0" x2="100" y1="25" y2="25"></line>
+                            <line stroke="rgba(0,0,0,0.05)" stroke-width="0.5" x1="0" x2="100" y1="50" y2="50"></line>
+                            <line stroke="rgba(0,0,0,0.05)" stroke-width="0.5" x1="0" x2="100" y1="75" y2="75"></line>
+                            <path d="M0,80 Q10,75 20,60 T40,50 T60,65 T80,30 T100,25" fill="none" stroke="#1885E2" stroke-width="1.5"></path>
+                            <circle cx="100" cy="25" fill="#1885E2" r="2"></circle>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Interactive Terminal -->
+                <div class="neo-card h-[300px] flex flex-col" id="tour-terminal">
+                    <div class="px-4 py-2 flex items-center justify-between border-b border-[#C4C9D4]/30">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-accent-red"></div>
+                            <div class="w-3 h-3 rounded-full bg-[#F5A623]"></div>
+                            <div class="w-3 h-3 rounded-full bg-accent-green"></div>
+                        </div>
+                        <span class="font-mono text-xs font-bold text-[#7E8490] tracking-wider">REDIS CLI - Local:6379</span>
+                        <button id="btn-clear-terminal" class="text-xs font-bold text-accent-blue hover:text-[#2A2F33] transition-colors">Clear</button>
+                    </div>
+                    
+                    <div class="neo-inset flex-grow m-2 p-3 overflow-y-auto font-mono text-sm flex flex-col gap-1 bg-white/50" id="terminal-output">
+                        <div class="text-[#7E8490]">redis-cli 7.0.12</div>
+                        <div class="text-[#7E8490]">Connected to 127.0.0.1:6379</div>
+                        <div><span class="text-accent-blue font-bold">127.0.0.1:6379></span> PING</div>
+                        <div class="text-accent-green font-bold">PONG</div>
+                        <div><span class="text-accent-blue font-bold">127.0.0.1:6379></span> INFO MEMORY</div>
+                        <div class="text-[#7E8490] opacity-80 leading-snug">
+                            # Memory<br/>
+                            used_memory:1245678<br/>
+                            used_memory_human:1.19G
+                        </div>
+                    </div>
+                    
+                    <div class="px-4 pb-3 flex items-center gap-2 font-mono">
+                        <span class="text-accent-blue font-bold">redis-gen></span>
+                        <input type="text" id="terminal-input" class="neo-inset px-2 py-1 flex-grow font-mono text-sm" placeholder="Type a command (e.g. GET key)..." spellcheck="false" autocomplete="off"/>
+                    </div>
+                </div>
             </div>
-            <div class="flex space-x-4">
-                <button id="btn-onboarding-prev" class="neumorphic-btn px-6 py-2 text-slate-300 font-bold hidden">Previous</button>
-                <button id="btn-onboarding-next" class="neumorphic-btn px-6 py-2 text-primary font-bold">Next</button>
+
+            <!-- Right Column: Key Browser -->
+            <div class="lg:col-span-4 neo-card flex flex-col overflow-hidden h-full" id="tour-browser">
+                <div class="p-4 flex justify-between items-center border-b border-[#C4C9D4]/30">
+                    <h2 class="text-lg font-bold text-[#2A2F33] flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-blue">manage_search</span>
+                        Key Browser
+                    </h2>
+                    <button id="btn-refresh-keys" class="neo-button p-1 text-accent-blue flex items-center justify-center">
+                        <span class="material-symbols-outlined text-sm">refresh</span>
+                    </button>
+                </div>
+                
+                <div class="p-4">
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#7E8490] text-[18px]">search</span>
+                        <input id="key-filter" type="text" class="neo-inset w-full py-2 pl-10 pr-4 font-mono text-sm placeholder:text-[#7E8490]" placeholder="Search keys..."/>
+                    </div>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto px-2">
+                    <div id="key-list" class="flex flex-col gap-2 w-full"></div>
+                </div>
+                
+                <!-- Detail Panel (Value Viewer) -->
+                <div id="key-detail" class="h-[250px] neo-inset m-2 p-4 flex flex-col hidden bg-white/50 border border-white/50">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2">
+                            <span id="detail-key-name" class="font-mono font-bold text-accent-blue text-sm truncate max-w-[150px]"></span>
+                            <span id="detail-key-type" class="neo-badge text-[10px]"></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="text-[#7E8490] hover:text-accent-blue transition-colors"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+                            <button class="text-[#7E8490] hover:text-accent-red transition-colors"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+                            <button id="btn-close-detail" class="text-[#7E8490] hover:text-[#2A2F33] transition-colors ml-1"><span class="material-symbols-outlined text-[18px]">close</span></button>
+                        </div>
+                    </div>
+                    <div id="detail-content" class="bg-white/70 rounded p-2 flex-grow overflow-y-auto font-mono text-xs leading-relaxed whitespace-pre text-[#2A2F33] shadow-inner border border-[#C4C9D4]/30"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="flex flex-col items-center justify-center absolute inset-0 bg-[#E8EBF2] z-50">
+        <div class="neo-card p-8 flex flex-col items-center max-w-sm w-full">
+            <span class="material-symbols-outlined text-accent-blue text-6xl mb-4">database</span>
+            <h1 class="text-3xl font-bold text-[#2A2F33] mb-6">RediForge</h1>
+            <input type="text" id="ws-url" value="wss://redisgen.onrender.com" class="neo-inset w-full p-3 mb-4 text-center font-mono text-[#2A2F33]" placeholder="Server URL">
+            <button id="btn-connect" class="neo-button neo-button-primary w-full p-3 text-lg">Connect</button>
+            <p id="login-error" class="text-accent-red mt-4 text-sm font-bold h-5"></p>
+        </div>
+    </div>
+
+    <!-- Onboarding Tour Overlay -->
+    <div id="onboarding-overlay" class="hidden fixed inset-0 z-[100] pointer-events-none"></div>
+    
+    <div id="onboarding-modal" class="hidden fixed z-[101] neo-tooltip p-6 w-[350px] transition-all duration-300 pointer-events-auto flex flex-col gap-3">
+        <div class="flex justify-between items-center">
+            <h3 class="text-lg font-bold text-accent-blue flex items-center gap-2" id="onboarding-title">
+                <span class="material-symbols-outlined">explore</span>
+                Welcome to RediForge
+            </h3>
+            <button id="btn-close-onboarding" class="text-[#7E8490] hover:text-accent-red"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        
+        <p class="text-sm text-[#7E8490] leading-relaxed" id="onboarding-text">
+            RediForge is your in-memory datastore playground. Let's take a quick tour of the dashboard!
+        </p>
+        
+        <div class="flex justify-between items-center mt-2">
+            <div id="onboarding-dots" class="flex gap-2">
+                <!-- Dots populated by JS -->
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-onboarding-prev" class="neo-button px-3 py-1 text-xs text-[#7E8490] hidden">Back</button>
+                <button id="btn-onboarding-next" class="neo-button neo-button-primary px-3 py-1 text-xs tour-btn-highlight">Next</button>
             </div>
         </div>
     </div>
-</div>
-<script src="app.js?v=3"></script>
-</body></html>
+
+    <script src="app.js?v=5"></script>
+</body>
+</html>

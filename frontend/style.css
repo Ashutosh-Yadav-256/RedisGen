@@ -1,3 +1,182 @@
+:root {
+    /* Base Neumorphic Background */
+    --neo-bg: #E8EBF2; 
+    
+    /* Shadows for Soft UI */
+    --neo-shadow-light: #FFFFFF;
+    --neo-shadow-dark: #C4C9D4;
+    
+    /* Accent Colors from the Image Palette */
+    --accent-red: #E13B3B;     
+    --accent-blue: #1885E2;    
+    --accent-green: #3CE0AD;   
+    --text-dark: #2A2F33;      
+    --text-muted: #7E8490;     
+}
+
+body {
+    background-color: var(--neo-bg);
+    color: var(--text-dark);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Neumorphic Containers */
+.redisgen-container {
+    background-color: var(--neo-bg);
+    border-radius: 2rem;
+    box-shadow: inset 5px 5px 15px var(--neo-shadow-dark), 
+                inset -5px -5px 15px var(--neo-shadow-light);
+}
+
+.neo-card {
+    background-color: var(--neo-bg);
+    border-radius: 1rem;
+    box-shadow: 8px 8px 16px var(--neo-shadow-dark), 
+                -8px -8px 16px var(--neo-shadow-light);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+.neo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 10px 10px 20px var(--neo-shadow-dark), 
+                -10px -10px 20px var(--neo-shadow-light);
+}
+
+/* Neumorphic Buttons */
+.neo-button {
+    background-color: var(--neo-bg);
+    color: var(--text-dark);
+    border-radius: 0.5rem;
+    box-shadow: 4px 4px 8px var(--neo-shadow-dark), 
+                -4px -4px 8px var(--neo-shadow-light);
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+}
+
+.neo-button:hover {
+    box-shadow: 5px 5px 10px var(--neo-shadow-dark), 
+                -5px -5px 10px var(--neo-shadow-light);
+}
+
+.neo-button:active, .neo-button-pressed {
+    box-shadow: inset 4px 4px 8px var(--neo-shadow-dark), 
+                inset -4px -4px 8px var(--neo-shadow-light) !important;
+    transform: scale(0.98);
+}
+
+/* Primary Button (Blue accent) */
+.neo-button-primary {
+    color: var(--accent-blue);
+}
+
+/* Danger Button (Red accent) */
+.neo-button-danger {
+    color: var(--accent-red);
+}
+
+/* Neumorphic Inputs / Inset Areas */
+.neo-inset {
+    background-color: var(--neo-bg);
+    border-radius: 0.5rem;
+    box-shadow: inset 4px 4px 8px var(--neo-shadow-dark), 
+                inset -4px -4px 8px var(--neo-shadow-light);
+    border: none;
+    color: var(--text-dark);
+    outline: none;
+}
+
+.neo-inset:focus {
+    box-shadow: inset 5px 5px 10px var(--neo-shadow-dark), 
+                inset -5px -5px 10px var(--neo-shadow-light),
+                0 0 0 2px rgba(24, 133, 226, 0.2);
+}
+
+/* Badges / Indicators */
+.neo-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 1rem;
+    background: var(--neo-bg);
+    color: var(--text-dark);
+    box-shadow: 3px 3px 6px var(--neo-shadow-dark), 
+                -3px -3px 6px var(--neo-shadow-light);
+}
+
+.skill-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,0.2), 
+                inset -2px -2px 4px rgba(255,255,255,0.7);
+    display: inline-block;
+}
+.indicator-red { background-color: var(--accent-red); }
+.indicator-blue { background-color: var(--accent-blue); }
+.indicator-green { background-color: var(--accent-green); }
+
+/* Overlays and Onboarding Tooltips */
+.neo-tooltip {
+    background-color: var(--neo-bg);
+    border-radius: 1rem;
+    box-shadow: 12px 12px 24px rgba(0,0,0,0.15), 
+                -12px -12px 24px rgba(255,255,255,0.8);
+    border: 1px solid rgba(255,255,255,0.6);
+    z-index: 1000;
+}
+
+.onboarding-highlight {
+    position: relative;
+    z-index: 99 !important;
+    border-radius: 1rem;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.5),
+                0 0 15px var(--accent-blue) !important;
+    background-color: var(--neo-bg);
+    pointer-events: none; /* Just highlight visually */
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 4px 4px 8px var(--neo-shadow-dark), -4px -4px 8px var(--neo-shadow-light), 0 0 5px var(--accent-blue); }
+    50% { box-shadow: 4px 4px 8px var(--neo-shadow-dark), -4px -4px 8px var(--neo-shadow-light), 0 0 20px var(--accent-blue); }
+}
+
+.tour-btn-highlight {
+    animation: pulse-glow 2s infinite;
+}
+
+/* Utility to override tailwind dark mode if needed */
+.text-on-surface-variant {
+    color: var(--text-muted);
+}
+.text-on-surface {
+    color: var(--text-dark);
+}
+
+/* Terminal Line Styles */
+.cmd-line { color: var(--accent-blue); font-weight: bold; }
+.resp-line { color: var(--accent-green); font-weight: bold; }
+.err-line { color: var(--accent-red); font-weight: bold; }
+.info-line { color: var(--text-muted); }
+
 #key-detail:not(.hidden) + #key-detail-empty {
     display: none !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+    background: var(--neo-shadow-dark); 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted); 
 }
