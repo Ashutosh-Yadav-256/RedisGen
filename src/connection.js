@@ -35,8 +35,7 @@ ClientConnection.prototype._bindEvents = function () {
 };
 
 ClientConnection.prototype._needsAuth = function () {
-    var pass = this.server.config.get('requirepass');
-    return pass && pass.length > 0 && !this.authenticated;
+    return false;
 };
 
 ClientConnection.prototype._onData = function (chunk) {

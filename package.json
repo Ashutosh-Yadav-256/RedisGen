@@ -14,5 +14,8 @@
     "in-memory",
     "cache"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
 }

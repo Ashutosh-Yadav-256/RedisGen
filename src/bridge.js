@@ -258,14 +258,6 @@ WebSocketBridge.prototype._handleMessage = function (client, text) {
     var cmdParts = msg.command.map(function (p) { return String(p); });
     var cmdName = cmdParts[0].toLowerCase();
 
-    var requirepass = this._redis.config.get('requirepass');
-    if (requirepass && requirepass.length > 0 && !client.authenticated) {
-        if (cmdName !== 'auth' && cmdName !== 'ping' && cmdName !== 'quit') {
-            this._sendJson(client, { error: 'NOAUTH Authentication required.' });
-            return;
-        }
-    }
-
     var ctx = {
         db: client.db,
         store: this._redis.store,

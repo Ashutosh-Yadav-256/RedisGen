@@ -15,7 +15,6 @@
         overlay: document.getElementById('login-overlay'),
         app: document.getElementById('app'),
         wsUrl: document.getElementById('ws-url'),
-        authPass: document.getElementById('auth-pass'),
         btnConnect: document.getElementById('btn-connect'),
         loginError: document.getElementById('login-error'),
         status: document.getElementById('connection-status'),
@@ -37,17 +36,24 @@
         statKeys: document.getElementById('stat-keys'),
         statNode: document.getElementById('stat-node'),
         statsUptime: document.getElementById('stats-uptime'),
-        memoryChart: document.getElementById('memory-chart')
+        memoryChart: document.getElementById('memory-chart'),
+        btnHelp: document.getElementById('btn-help'),
+        onboardingOverlay: document.getElementById('onboarding-overlay'),
+        onboardingModal: document.getElementById('onboarding-modal'),
+        btnCloseOnboarding: document.getElementById('btn-close-onboarding'),
+        onboardingSteps: document.querySelectorAll('.onboarding-step'),
+        onboardingDotsContainer: document.getElementById('onboarding-dots'),
+        btnOnboardingPrev: document.getElementById('btn-onboarding-prev'),
+        btnOnboardingNext: document.getElementById('btn-onboarding-next')
     };
+
+    var currentOnboardingStep = 0;
 
     els.btnConnect.addEventListener('click', doConnect);
     els.wsUrl.addEventListener('keydown', function (e) { if (e.key === 'Enter') doConnect(); });
-    els.authPass.addEventListener('keydown', function (e) { if (e.key === 'Enter') doConnect(); });
     els.btnDisconnect.addEventListener('click', doDisconnect);
     
-    // Auto-connect for portfolio visitors
     els.wsUrl.value = 'wss://redisgen.onrender.com';
-    els.authPass.value = 'PUT_YOUR_PASSWORD_HERE';
     setTimeout(doConnect, 100);
     els.terminalInput.addEventListener('keydown', onTerminalKey);
     els.btnClear.addEventListener('click', function () { els.terminalOutput.innerHTML = ''; });
@@ -85,19 +91,7 @@
         }
 
         ws.onopen = function () {
-            var pass = els.authPass.value.trim();
-            if (pass) {
-                sendCommand(['AUTH', pass], function (res) {
-                    if (res && res.error) {
-                        els.loginError.textContent = res.error;
-                        ws.close();
-                        return;
-                    }
-                    enterDashboard();
-                });
-            } else {
-                enterDashboard();
-            }
+            enterDashboard();
         };
 
         ws.onmessage = function (e) {
@@ -139,12 +133,12 @@
 
     function setConnected() {
         els.status.textContent = 'Connected';
-        els.status.className = 'status-badge connected';
+        els.status.className = 'px-4 py-2 rounded-lg cursor-default bg-emerald-500/20 text-emerald-400 font-bold';
     }
 
     function setDisconnected() {
         els.status.textContent = 'Disconnected';
-        els.status.className = 'status-badge disconnected';
+        els.status.className = 'px-4 py-2 rounded-lg cursor-default bg-rose-500/20 text-rose-400 font-bold';
         if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
         els.overlay.classList.remove('hidden');
         els.app.classList.add('hidden');
@@ -459,4 +453,88 @@
     function escapeHtml(str) {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    function initOnboarding() {
+        if (!els.onboardingOverlay) return;
+
+        els.onboardingDotsContainer.innerHTML = '';
+        for (var i = 0; i < els.onboardingSteps.length; i++) {
+            var dot = document.createElement('div');
+            dot.className = 'w-2 h-2 rounded-full transition-colors duration-300 ' + (i === 0 ? 'bg-primary' : 'bg-slate-700');
+            els.onboardingDotsContainer.appendChild(dot);
+        }
+
+        function showStep(step) {
+            els.onboardingSteps.forEach(function(s, idx) {
+                if (idx === step) {
+                    s.classList.remove('hidden');
+                } else {
+                    s.classList.add('hidden');
+                }
+            });
+
+            var dots = els.onboardingDotsContainer.children;
+            for (var j = 0; j < dots.length; j++) {
+                dots[j].className = 'w-2 h-2 rounded-full transition-colors duration-300 ' + (j === step ? 'bg-primary' : 'bg-slate-700');
+            }
+
+            if (step === 0) {
+                els.btnOnboardingPrev.classList.add('hidden');
+            } else {
+                els.btnOnboardingPrev.classList.remove('hidden');
+            }
+
+            if (step === els.onboardingSteps.length - 1) {
+                els.btnOnboardingNext.textContent = 'Let\'s Go!';
+            } else {
+                els.btnOnboardingNext.textContent = 'Next';
+            }
+        }
+
+        function openModal() {
+            currentOnboardingStep = 0;
+            showStep(0);
+            els.onboardingOverlay.classList.remove('hidden');
+            setTimeout(function() {
+                els.onboardingModal.classList.remove('scale-95', 'opacity-0');
+                els.onboardingModal.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            els.onboardingModal.classList.remove('scale-100', 'opacity-100');
+            els.onboardingModal.classList.add('scale-95', 'opacity-0');
+            setTimeout(function() {
+                els.onboardingOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        els.btnOnboardingNext.addEventListener('click', function() {
+            if (currentOnboardingStep < els.onboardingSteps.length - 1) {
+                currentOnboardingStep++;
+                showStep(currentOnboardingStep);
+            } else {
+                closeModal();
+            }
+        });
+
+        els.btnOnboardingPrev.addEventListener('click', function() {
+            if (currentOnboardingStep > 0) {
+                currentOnboardingStep--;
+                showStep(currentOnboardingStep);
+            }
+        });
+
+        els.btnCloseOnboarding.addEventListener('click', closeModal);
+        if (els.btnHelp) {
+            els.btnHelp.addEventListener('click', openModal);
+        }
+
+        if (!localStorage.getItem('redisgen_onboarding_seen')) {
+            localStorage.setItem('redisgen_onboarding_seen', 'true');
+            setTimeout(openModal, 500);
+        }
+    }
+
+    initOnboarding();
 })();

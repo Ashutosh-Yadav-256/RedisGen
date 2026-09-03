@@ -1,135 +1,292 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RedisGen Dashboard</title>
-    <meta name="description" content="RedisGen - A Redis-compatible in-memory data store dashboard">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RedisGen Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;family=Public+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#6366f1",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.75rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Inter", "sans-serif"],
+                        display: ["Inter", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Public Sans", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #1e293b;
+            color: #f8fafc;
+        }
+        .neumorphic-card {
+            background: #1e293b;
+            box-shadow: 6px 6px 12px #0f172a, -6px -6px 12px #2d3b54;
+            border-radius: 0.75rem;
+        }
+        .neumorphic-inset {
+            background: #1e293b;
+            box-shadow: inset 4px 4px 8px #0f172a, inset -4px -4px 8px #2d3b54;
+            border-radius: 0.75rem;
+        }
+        .neumorphic-btn {
+            background: #1e293b;
+            box-shadow: 4px 4px 8px #0f172a, -4px -4px 8px #2d3b54;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .neumorphic-btn:active {
+            box-shadow: inset 2px 2px 5px #0f172a, inset -2px -2px 5px #2d3b54;
+        }
+        .hidden { display: none !important; }
+        .key-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+        .key-item:hover {
+            background: rgba(45, 59, 84, 0.5);
+        }
+        .key-item .key-name { color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 0.5rem; }
+        .key-item .key-type {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            letter-spacing: 0.05em;
+        }
+        .detail-type-badge {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            letter-spacing: 0.05em;
+        }
+        .key-type-string { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+        .key-type-list { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .key-type-hash { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+        .key-type-set { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
+        .key-type-zset { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
+        .terminal-output .cmd-line { color: #22d3ee; }
+        .terminal-output .resp-line { color: #4ade80; }
+        .terminal-output .err-line { color: #f87171; }
+        .terminal-output .info-line { color: #94a3b8; font-style: italic; }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            cursor: default;
+        }
+        .status-badge.connected {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+        .status-badge.disconnected {
+            background-color: rgba(244, 63, 94, 0.2);
+            color: #fb7185;
+        }
+    </style>
 </head>
-<body>
-    <div id="login-overlay" class="overlay">
-        <div class="login-card">
-            <div class="login-logo">
-                <span class="logo-bracket">{</span>
-                <span class="logo-text">RG</span>
-                <span class="logo-bracket">}</span>
+<body class="font-body antialiased min-h-screen flex flex-col">
+<div id="login-overlay" class="hidden">
+    <input type="text" id="ws-url" value="wss://redisgen.onrender.com">
+    <input type="text" id="auth-pass" value="XCNbmw19309#">
+    <p id="login-error"></p>
+    <button id="btn-connect">Connect</button>
+</div>
+<div id="app" class="app flex flex-col flex-grow">
+    <nav class="flex justify-between items-center w-full px-6 py-4 z-50 bg-[#1e293b] docked full-width top-0 shadow-[6px_6px_12px_#0a0f1d,-6px_-6px_12px_#1e293b]">
+        <div class="flex items-center space-x-4">
+            <span class="text-xl font-display font-black tracking-tighter text-[#60a5fa]">RedisGen</span>
+            <button id="btn-help" class="neumorphic-btn p-2 text-slate-400 hover:text-slate-200 ml-4 rounded-full flex items-center justify-center" title="Help Guide">
+                <span class="material-symbols-outlined text-[20px]">help</span>
+            </button>
+        </div>
+        <div class="flex items-center space-x-6 font-headline text-sm font-medium tracking-tight">
+            <div class="flex items-center space-x-4">
+                <select id="db-select" class="neumorphic-btn bg-[#1e293b] border-none text-slate-300 px-4 py-2 cursor-pointer outline-none focus:ring-0">
+                    <option value="0">db0</option><option value="1">db1</option><option value="2">db2</option><option value="3">db3</option>
+                    <option value="4">db4</option><option value="5">db5</option><option value="6">db6</option><option value="7">db7</option>
+                    <option value="8">db8</option><option value="9">db9</option><option value="10">db10</option><option value="11">db11</option>
+                    <option value="12">db12</option><option value="13">db13</option><option value="14">db14</option><option value="15">db15</option>
+                </select>
+                <button id="connection-status" class="px-4 py-2 text-slate-400 rounded-lg cursor-default">Disconnected</button>
+                <button id="btn-disconnect" class="px-4 py-2 text-primary font-bold rounded-lg neumorphic-btn">Disconnect</button>
             </div>
-            <h1 class="login-title">RedisGen</h1>
-            <p class="login-subtitle">Connect to your Redis server</p>
-            <div class="login-form">
-                <div class="input-group">
-                    <label for="ws-url">Server URL</label>
-                    <input type="text" id="ws-url" placeholder="wss://your-server.onrender.com" spellcheck="false">
+        </div>
+    </nav>
+    <main class="flex-grow p-6 lg:p-8 flex flex-col gap-8 max-w-7xl mx-auto w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <section class="lg:col-span-1 flex flex-col gap-6">
+                <div class="flex justify-between items-end">
+                    <h2 class="text-xl font-headline font-bold text-slate-200">Server Stats</h2>
+                    <span id="stats-uptime" class="text-xs font-mono text-slate-400">--</span>
                 </div>
-                <div class="input-group">
-                    <label for="auth-pass">Password</label>
-                    <input type="password" id="auth-pass" placeholder="Enter password (optional)" autocomplete="new-password">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="neumorphic-card p-4 flex flex-col">
+                        <span class="text-sm font-label text-slate-400 mb-1">Memory</span>
+                        <span id="stat-memory" class="text-2xl font-display font-bold text-slate-100">--</span>
+                    </div>
+                    <div class="neumorphic-card p-4 flex flex-col">
+                        <span class="text-sm font-label text-slate-400 mb-1">Clients</span>
+                        <span id="stat-clients" class="text-2xl font-display font-bold text-slate-100">--</span>
+                    </div>
+                    <div class="neumorphic-card p-4 flex flex-col">
+                        <span class="text-sm font-label text-slate-400 mb-1">Total Keys</span>
+                        <span id="stat-keys" class="text-2xl font-display font-bold text-slate-100">--</span>
+                    </div>
+                    <div class="neumorphic-card p-4 flex flex-col">
+                        <span class="text-sm font-label text-slate-400 mb-1">Node</span>
+                        <span id="stat-node" class="text-lg font-display font-bold text-slate-100 mt-auto">--</span>
+                    </div>
                 </div>
-                <button id="btn-connect" class="btn-primary">Connect</button>
-                <p id="login-error" class="login-error"></p>
+                <div class="neumorphic-card p-4 flex-grow flex flex-col min-h-[160px]">
+                    <span class="text-sm font-label text-slate-400 mb-2">Memory History</span>
+                    <div class="flex-grow flex items-end justify-between pt-2">
+                        <canvas id="memory-chart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+            </section>
+            <section class="lg:col-span-2 flex flex-col h-full min-h-[350px]">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-xl font-headline font-bold text-slate-200">Terminal</h2>
+                    <button id="btn-clear-terminal" class="neumorphic-btn px-3 py-1.5 text-xs font-label text-slate-300 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 0;">delete</span>
+                        Clear
+                    </button>
+                </div>
+                <div id="terminal-output" class="neumorphic-inset flex-grow p-4 font-mono text-sm overflow-y-auto flex flex-col relative h-64 mb-4">
+                </div>
+                <div class="flex items-center text-slate-300 pt-2 border-t border-slate-700/50">
+                    <span class="text-emerald-400 mr-2 shrink-0 font-mono">redis-gen&gt;</span>
+                    <input type="text" id="terminal-input" class="bg-transparent border-none focus:ring-0 text-sm font-mono w-full text-slate-200 placeholder-slate-500 p-0" placeholder="Type a command..." spellcheck="false" autocomplete="off"/>
+                </div>
+            </section>
+        </div>
+        <section class="flex flex-col gap-6 mt-4">
+            <h2 class="text-xl font-headline font-bold text-slate-200">Key Browser</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[400px]">
+                <div class="md:col-span-1 neumorphic-card flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50">
+                        <div class="flex gap-2">
+                            <div class="neumorphic-inset flex items-center px-3 py-2 flex-grow">
+                                <span class="material-symbols-outlined text-slate-400 text-sm mr-2">search</span>
+                                <input type="text" id="key-filter" class="bg-transparent border-none focus:ring-0 text-sm w-full text-slate-200 placeholder-slate-500 p-0" placeholder="Filter pattern..." value="*">
+                            </div>
+                            <button id="btn-refresh-keys" class="neumorphic-btn px-3 py-2 text-slate-300" title="Refresh">
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="key-list" class="flex-grow overflow-y-auto p-2 space-y-1">
+                    </div>
+                </div>
+                <div class="md:col-span-2 neumorphic-inset p-6 flex flex-col relative overflow-hidden">
+                    <div id="key-detail" class="hidden flex flex-col h-full">
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center gap-3">
+                                <h3 id="detail-key-name" class="font-mono text-lg text-slate-200 font-bold"></h3>
+                                <span id="detail-key-type" class="detail-type-badge"></span>
+                            </div>
+                            <div class="flex gap-3">
+                                <button id="btn-close-detail" class="neumorphic-btn p-2 text-slate-400 hover:text-red-400">
+                                    <span class="material-symbols-outlined text-[20px]">close</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="detail-content" class="flex-grow font-mono text-sm text-slate-300 whitespace-pre overflow-auto bg-[#1a2333] p-4 rounded-lg shadow-inner">
+                        </div>
+                    </div>
+                    <div id="key-detail-empty" class="flex-grow flex items-center justify-center text-slate-500 font-label text-sm">
+                        Select a key to view its contents
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<div id="onboarding-overlay" class="fixed inset-0 z-[100] bg-[#0a0f1d]/80 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 hidden">
+    <div class="neumorphic-card max-w-2xl w-full mx-4 p-8 flex flex-col relative transform transition-transform duration-300 scale-95 opacity-0" id="onboarding-modal">
+        <button id="btn-close-onboarding" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        <div class="onboarding-step" data-step="0">
+            <h2 class="text-3xl font-display font-black text-slate-100 mb-4">Welcome to RedisGen! </h2>
+            <p class="text-slate-300 text-lg mb-6 leading-relaxed">
+                RedisGen is your sleek, high-performance, in-memory data store dashboard. With its new <strong>Neumorphism (Soft UI)</strong> design, interacting with your database is not only powerful but also visually stunning.
+            </p>
+            <p class="text-slate-300 text-lg mb-6">Let's take a quick tour of your new tools!</p>
+        </div>
+        <div class="onboarding-step hidden" data-step="1">
+            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Connection & Database</h2>
+            <ul class="text-slate-300 space-y-4 mb-6 list-disc list-inside">
+                <li><strong>Auto-Connect:</strong> The dashboard automatically connects in the background. Look for the green <em>Connected</em> badge!</li>
+                <li><strong>Database Selector:</strong> Use the top right dropdown (db0-db15) to isolate keys in different logical databases.</li>
+                <li><strong>Disconnect:</strong> Manually sever the connection using the Disconnect button.</li>
+            </ul>
+        </div>
+        <div class="onboarding-step hidden" data-step="2">
+            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Server Stats</h2>
+            <p class="text-slate-300 mb-4">Get a real-time pulse on your database's health.</p>
+            <ul class="text-slate-300 space-y-3 mb-6 list-disc list-inside">
+                <li><strong>Memory & Clients:</strong> Live metrics on RAM consumption and active connections.</li>
+                <li><strong>Total Keys:</strong> Number of keys stored in the active database.</li>
+                <li><strong>Memory Chart:</strong> A live-updating sparkline visualizing memory usage over time to help spot leaks at a glance.</li>
+            </ul>
+        </div>
+        <div class="onboarding-step hidden" data-step="3">
+            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Interactive Terminal</h2>
+            <p class="text-slate-300 mb-4">Direct command-line access to your RedisGen instance.</p>
+            <ul class="text-slate-300 space-y-3 mb-6 list-disc list-inside">
+                <li><strong>Run Commands:</strong> Type standard Redis commands like <code class="bg-[#0f172a] px-2 py-1 rounded text-emerald-400">PING</code> or <code class="bg-[#0f172a] px-2 py-1 rounded text-emerald-400">SET mykey "Hello"</code>.</li>
+                <li><strong>Instant Feedback:</strong> <span class="text-emerald-400">Green</span> for successful responses, <span class="text-rose-400">Red</span> for errors.</li>
+                <li><strong>History:</strong> Use the Up and Down arrow keys to cycle through previous commands.</li>
+            </ul>
+        </div>
+        <div class="onboarding-step hidden" data-step="4">
+            <h2 class="text-2xl font-display font-bold text-slate-100 mb-4">Key Browser</h2>
+            <p class="text-slate-300 mb-4">Manage your data visually without needing to remember every key name.</p>
+            <ul class="text-slate-300 space-y-3 mb-6 list-disc list-inside">
+                <li><strong>Search & Scan:</strong> Filter keys using pattern matching (e.g., <code class="bg-[#0f172a] px-1 rounded text-slate-200">user:*</code>) and hit the Scan button.</li>
+                <li><strong>Type Badges:</strong> Every key has a colored badge indicating its data structure (String, List, Hash, Set, ZSet).</li>
+                <li><strong>Detail View:</strong> Click any key to automatically fetch and display its formatted JSON contents in the right pane.</li>
+            </ul>
+            <p class="text-emerald-400 font-bold text-xl mt-6 text-center">Enjoy your new dashboard! </p>
+        </div>
+        <div class="flex justify-between items-center mt-auto pt-6 border-t border-slate-700/50">
+            <div class="flex space-x-2" id="onboarding-dots">
+            </div>
+            <div class="flex space-x-4">
+                <button id="btn-onboarding-prev" class="neumorphic-btn px-6 py-2 text-slate-300 font-bold hidden">Previous</button>
+                <button id="btn-onboarding-next" class="neumorphic-btn px-6 py-2 text-primary font-bold">Next</button>
             </div>
         </div>
     </div>
-
-    <div id="app" class="app hidden">
-        <header class="top-bar">
-            <div class="top-bar-left">
-                <span class="brand">
-                    <span class="brand-bracket">{</span>
-                    <span class="brand-text">RedisGen</span>
-                    <span class="brand-bracket">}</span>
-                </span>
-                <span id="connection-status" class="status-badge disconnected">Disconnected</span>
-            </div>
-            <div class="top-bar-right">
-                <select id="db-select" class="db-selector">
-                    <option value="0">db0</option>
-                    <option value="1">db1</option>
-                    <option value="2">db2</option>
-                    <option value="3">db3</option>
-                    <option value="4">db4</option>
-                    <option value="5">db5</option>
-                    <option value="6">db6</option>
-                    <option value="7">db7</option>
-                    <option value="8">db8</option>
-                    <option value="9">db9</option>
-                    <option value="10">db10</option>
-                    <option value="11">db11</option>
-                    <option value="12">db12</option>
-                    <option value="13">db13</option>
-                    <option value="14">db14</option>
-                    <option value="15">db15</option>
-                </select>
-                <button id="btn-disconnect" class="btn-secondary">Disconnect</button>
-            </div>
-        </header>
-
-        <main class="dashboard">
-            <section class="panel panel-stats">
-                <div class="panel-header">
-                    <h2>Server Stats</h2>
-                    <span id="stats-uptime" class="stat-badge">--</span>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-memory">--</span>
-                        <span class="stat-label">Memory</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-clients">--</span>
-                        <span class="stat-label">Clients</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-keys">--</span>
-                        <span class="stat-label">Total Keys</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="stat-node">--</span>
-                        <span class="stat-label">Node.js</span>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="memory-chart" width="400" height="120"></canvas>
-                </div>
-            </section>
-
-            <section class="panel panel-terminal">
-                <div class="panel-header">
-                    <h2>Terminal</h2>
-                    <button id="btn-clear-terminal" class="btn-icon" title="Clear">Clear</button>
-                </div>
-                <div id="terminal-output" class="terminal-output"></div>
-                <div class="terminal-input-row">
-                    <span class="prompt">redis&gt;</span>
-                    <input type="text" id="terminal-input" class="terminal-input" placeholder="Type a command..." spellcheck="false" autocomplete="off">
-                </div>
-            </section>
-
-            <section class="panel panel-keys">
-                <div class="panel-header">
-                    <h2>Key Browser</h2>
-                    <div class="key-controls">
-                        <input type="text" id="key-filter" class="key-filter" placeholder="Filter pattern..." value="*">
-                        <button id="btn-refresh-keys" class="btn-icon" title="Refresh">Scan</button>
-                    </div>
-                </div>
-                <div id="key-list" class="key-list"></div>
-                <div id="key-detail" class="key-detail hidden">
-                    <div class="key-detail-header">
-                        <span id="detail-key-name" class="detail-key-name"></span>
-                        <span id="detail-key-type" class="detail-type-badge"></span>
-                        <button id="btn-close-detail" class="btn-icon">X</button>
-                    </div>
-                    <div id="detail-content" class="detail-content"></div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <script src="app.js"></script>
-</body>
-</html>
+</div>
+<script src="app.js?v=3"></script>
+</body></html>
