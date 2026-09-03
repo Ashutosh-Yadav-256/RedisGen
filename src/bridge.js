@@ -5,7 +5,7 @@ var crypto = require('crypto');
 var registry = require('./commands/registry');
 var encoder = require('./protocol/encoder');
 
-var WS_MAGIC = '258EAFA5-E914-47DA-95CA-5AB9964C80F8';
+var WS_MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
 function WebSocketBridge(redisServer) {
     this._redis = redisServer;
