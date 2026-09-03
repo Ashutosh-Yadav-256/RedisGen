@@ -9,6 +9,7 @@ const zsetCmds = require('./sorted_sets');
 const serverCmds = require('./server_cmds');
 const pubsubCmds = require('./pubsub');
 const txCmds = require('./transaction');
+const authCmds = require('./auth');
 const encoder = require('../protocol/encoder');
 
 const TABLE = {};
@@ -110,7 +111,6 @@ reg('time', serverCmds.time, 'r');
 reg('info', serverCmds.info, 'r');
 reg('command', serverCmds.command, 'r');
 reg('config', serverCmds.config, 'r');
-reg('debug', serverCmds.debug, 'r');
 reg('client', serverCmds.client, 'r');
 reg('quit', serverCmds.quit, 'r');
 reg('reset', serverCmds.reset, 'r');
@@ -127,6 +127,8 @@ reg('exec', txCmds.exec, 't');
 reg('discard', txCmds.discard, 't');
 reg('watch', txCmds.watch, 't');
 reg('unwatch', txCmds.unwatch, 't');
+
+reg('auth', authCmds.auth, 'r');
 
 const TX_PASSTHROUGH = new Set(['exec', 'discard', 'multi', 'watch']);
 

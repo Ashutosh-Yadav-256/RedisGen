@@ -175,32 +175,7 @@ function cmdConfig(args, ctx) {
     return encoder.encodeError("ERR Unknown subcommand or wrong number of arguments for 'config|" + sub.toLowerCase() + "'");
 }
 
-function cmdDebug(args, ctx) {
-    if (args.length < 1) return encoder.wrongArgCount('debug');
 
-    const sub = args[0].toUpperCase();
-
-    if (sub === 'SLEEP') {
-        if (args.length !== 2) return encoder.wrongArgCount('debug|sleep');
-        return encoder.ok();
-    }
-
-    if (sub === 'SET-ACTIVE-EXPIRE') {
-        return encoder.ok();
-    }
-
-    if (sub === 'OBJECT') {
-        if (args.length < 2) return encoder.wrongArgCount('debug|object');
-        const key = args[1];
-        if (!ctx.store.exists(ctx.db, key)) {
-            return encoder.encodeError('ERR no such key');
-        }
-        const type = ctx.store.typeOf(ctx.db, key);
-        return encoder.encodeBulkString('Value at:0x00000000 refcount:1 encoding:' + type + ' serializedlength:1 lru:0 lru_seconds_idle:0');
-    }
-
-    return encoder.ok();
-}
 
 function cmdClient(args, ctx) {
     if (args.length < 1) return encoder.wrongArgCount('client');
@@ -289,7 +264,6 @@ module.exports = {
     info: cmdInfo,
     command: cmdCommand,
     config: cmdConfig,
-    debug: cmdDebug,
     client: cmdClient,
     quit: cmdQuit,
     reset: cmdReset,

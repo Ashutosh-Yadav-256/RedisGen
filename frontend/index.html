@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedisGen Dashboard</title>
+    <meta name="description" content="RedisGen - A Redis-compatible in-memory data store dashboard">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="login-overlay" class="overlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="logo-bracket">{</span>
+                <span class="logo-text">RG</span>
+                <span class="logo-bracket">}</span>
+            </div>
+            <h1 class="login-title">RedisGen</h1>
+            <p class="login-subtitle">Connect to your Redis server</p>
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="ws-url">Server URL</label>
+                    <input type="text" id="ws-url" placeholder="wss://your-server.onrender.com" spellcheck="false">
+                </div>
+                <div class="input-group">
+                    <label for="auth-pass">Password</label>
+                    <input type="password" id="auth-pass" placeholder="Enter password (optional)">
+                </div>
+                <button id="btn-connect" class="btn-primary">Connect</button>
+                <p id="login-error" class="login-error"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="app hidden">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <span class="brand">
+                    <span class="brand-bracket">{</span>
+                    <span class="brand-text">RedisGen</span>
+                    <span class="brand-bracket">}</span>
+                </span>
+                <span id="connection-status" class="status-badge disconnected">Disconnected</span>
+            </div>
+            <div class="top-bar-right">
+                <select id="db-select" class="db-selector">
+                    <option value="0">db0</option>
+                    <option value="1">db1</option>
+                    <option value="2">db2</option>
+                    <option value="3">db3</option>
+                    <option value="4">db4</option>
+                    <option value="5">db5</option>
+                    <option value="6">db6</option>
+                    <option value="7">db7</option>
+                    <option value="8">db8</option>
+                    <option value="9">db9</option>
+                    <option value="10">db10</option>
+                    <option value="11">db11</option>
+                    <option value="12">db12</option>
+                    <option value="13">db13</option>
+                    <option value="14">db14</option>
+                    <option value="15">db15</option>
+                </select>
+                <button id="btn-disconnect" class="btn-secondary">Disconnect</button>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <section class="panel panel-stats">
+                <div class="panel-header">
+                    <h2>Server Stats</h2>
+                    <span id="stats-uptime" class="stat-badge">--</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-memory">--</span>
+                        <span class="stat-label">Memory</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-clients">--</span>
+                        <span class="stat-label">Clients</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-keys">--</span>
+                        <span class="stat-label">Total Keys</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-node">--</span>
+                        <span class="stat-label">Node.js</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="memory-chart" width="400" height="120"></canvas>
+                </div>
+            </section>
+
+            <section class="panel panel-terminal">
+                <div class="panel-header">
+                    <h2>Terminal</h2>
+                    <button id="btn-clear-terminal" class="btn-icon" title="Clear">Clear</button>
+                </div>
+                <div id="terminal-output" class="terminal-output"></div>
+                <div class="terminal-input-row">
+                    <span class="prompt">redis&gt;</span>
+                    <input type="text" id="terminal-input" class="terminal-input" placeholder="Type a command..." spellcheck="false" autocomplete="off">
+                </div>
+            </section>
+
+            <section class="panel panel-keys">
+                <div class="panel-header">
+                    <h2>Key Browser</h2>
+                    <div class="key-controls">
+                        <input type="text" id="key-filter" class="key-filter" placeholder="Filter pattern..." value="*">
+                        <button id="btn-refresh-keys" class="btn-icon" title="Refresh">Scan</button>
+                    </div>
+                </div>
+                <div id="key-list" class="key-list"></div>
+                <div id="key-detail" class="key-detail hidden">
+                    <div class="key-detail-header">
+                        <span id="detail-key-name" class="detail-key-name"></span>
+                        <span id="detail-key-type" class="detail-type-badge"></span>
+                        <button id="btn-close-detail" class="btn-icon">X</button>
+                    </div>
+                    <div id="detail-content" class="detail-content"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

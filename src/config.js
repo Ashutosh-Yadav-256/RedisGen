@@ -15,7 +15,9 @@ const defaults = {
     aof_filename: 'appendonly.aof',
     rdb_filename: 'dump.rdb',
     loglevel: 'notice',
-    dir: '.'
+    dir: '.',
+    requirepass: '',
+    ws_port: 8080
 };
 
 class ServerConfig {

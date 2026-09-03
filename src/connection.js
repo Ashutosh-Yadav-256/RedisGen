@@ -2,8 +2,11 @@
 
 var RespParser = require('./protocol/parser').RespParser;
 var registry = require('./commands/registry');
+var encoder = require('./protocol/encoder');
 
 var nextConnectionId = 1;
+
+var PRE_AUTH_ALLOWED = { auth: true, quit: true, ping: true, hello: true };
 
 function ClientConnection(socket, server) {
     this.id = nextConnectionId++;
@@ -16,6 +19,7 @@ function ClientConnection(socket, server) {
     this.subscriptions = null;
     this.patternSubs = null;
     this.closing = false;
+    this.authenticated = false;
     this.remoteAddr = socket.remoteAddress + ':' + socket.remotePort;
 
     this._bindEvents();
@@ -30,6 +34,11 @@ ClientConnection.prototype._bindEvents = function () {
     this.socket.setNoDelay(true);
 };
 
+ClientConnection.prototype._needsAuth = function () {
+    var pass = this.server.config.get('requirepass');
+    return pass && pass.length > 0 && !this.authenticated;
+};
+
 ClientConnection.prototype._onData = function (chunk) {
     this.parser.append(chunk);
     var commands = this.parser.parse();
@@ -38,6 +47,13 @@ ClientConnection.prototype._onData = function (chunk) {
         var parsed = commands[i];
 
         if (!Array.isArray(parsed) || parsed.length === 0) continue;
+
+        var cmdName = parsed[0].toLowerCase();
+
+        if (this._needsAuth() && !PRE_AUTH_ALLOWED[cmdName]) {
+            this.write(encoder.encodeError('NOAUTH Authentication required.'));
+            continue;
+        }
 
         var ctx = {
             db: this.db,
@@ -49,7 +65,6 @@ ClientConnection.prototype._onData = function (chunk) {
             aofBuffer: null
         };
 
-        var cmdName = parsed[0].toLowerCase();
         var inTransaction = this.txQueue !== null;
         var isTxControl = cmdName === 'multi' || cmdName === 'exec' || cmdName === 'discard';
 

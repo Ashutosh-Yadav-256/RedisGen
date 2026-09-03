@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: redisgen
+    runtime: docker
+    repo: https://github.com/Ashutosh-Yadav-256/Build-Redis-In-JAVA
+    branch: main
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: PORT
+        value: 10000

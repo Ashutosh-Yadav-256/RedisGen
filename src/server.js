@@ -9,6 +9,7 @@ var RdbPersistence = require('./persistence/rdb').RdbPersistence;
 var AofPersistence = require('./persistence/aof').AofPersistence;
 var logger = require('./utils/logger');
 var registry = require('./commands/registry');
+var WebSocketBridge = require('./bridge').WebSocketBridge;
 
 function RedisGenServer(options) {
     this.config = new ServerConfig(options);
@@ -19,6 +20,7 @@ function RedisGenServer(options) {
     this.aof = new AofPersistence(this.config, this.store);
     this._clients = new Set();
     this._server = null;
+    this._bridge = null;
     this._startTime = Date.now();
 }
 
@@ -54,6 +56,12 @@ RedisGenServer.prototype.start = function () {
 
     if (this.config.get('appendonly')) {
         this.aof.open();
+    }
+
+    var wsPort = this.config.get('ws_port');
+    if (wsPort) {
+        this._bridge = new WebSocketBridge(this);
+        this._bridge.start(wsPort, '0.0.0.0');
     }
 
     this._setupShutdown();
@@ -136,6 +144,10 @@ RedisGenServer.prototype._setupShutdown = function () {
 
         self.aof.close();
 
+        if (self._bridge) {
+            self._bridge.stop();
+        }
+
         for (var client of self._clients) {
             client.destroy();
         }
@@ -161,6 +173,11 @@ RedisGenServer.prototype.stop = function () {
     this.store.expiry.stopActiveSweep();
     this.rdb.stopAutoSave();
     this.aof.close();
+
+    if (this._bridge) {
+        this._bridge.stop();
+        this._bridge = null;
+    }
 
     for (var client of this._clients) {
         client.destroy();
@@ -208,9 +225,20 @@ function parseCliArgs() {
             case 'hz':
                 options.hz = parseInt(args[++i], 10);
                 break;
+            case 'requirepass':
+                options.requirepass = args[++i];
+                break;
             default:
                 break;
         }
+    }
+
+    if (!options.requirepass && process.env.REDIS_PASSWORD) {
+        options.requirepass = process.env.REDIS_PASSWORD;
+    }
+
+    if (process.env.PORT) {
+        options.ws_port = parseInt(process.env.PORT, 10);
     }
 
     return options;
