@@ -44,6 +44,11 @@
     els.wsUrl.addEventListener('keydown', function (e) { if (e.key === 'Enter') doConnect(); });
     els.authPass.addEventListener('keydown', function (e) { if (e.key === 'Enter') doConnect(); });
     els.btnDisconnect.addEventListener('click', doDisconnect);
+    
+    // Auto-connect for portfolio visitors
+    els.wsUrl.value = 'wss://redisgen.onrender.com';
+    els.authPass.value = 'PUT_YOUR_PASSWORD_HERE';
+    setTimeout(doConnect, 100);
     els.terminalInput.addEventListener('keydown', onTerminalKey);
     els.btnClear.addEventListener('click', function () { els.terminalOutput.innerHTML = ''; });
     els.btnRefreshKeys.addEventListener('click', refreshKeys);
